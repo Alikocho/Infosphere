@@ -1,0 +1,65 @@
+name: Build Releases
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+
+  build-mac:
+    name: Build Mac (.app)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -e ".[all]"
+      - name: Build .app
+        run: pyinstaller infosphere.spec
+      - name: Zip the .app
+        run: cd dist && zip -r Infosphere-mac.zip Infosphere.app
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: dist/Infosphere-mac.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Infosphere-mac
+          path: dist/Infosphere-mac.zip
+
+  build-windows:
+    name: Build Windows (.exe)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -e ".[all]"
+      - name: Build .exe
+        run: pyinstaller infosphere.spec
+      - name: Upload to release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: dist/Infosphere.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Infosphere-windows
+          path: dist/Infosphere.exe
