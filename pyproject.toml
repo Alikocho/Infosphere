@@ -11,7 +11,7 @@ license     = { text = "MIT" }
 requires-python = ">=3.8"
 
 authors = [
-  { name = "Cold Alchemy Games / Clarkson University" },
+  { name = "Cold Alchemy Games /Alastair Kocho-Williams" },
 ]
 
 keywords = [
@@ -35,7 +35,7 @@ classifiers = [
 
 # Core simulation has zero runtime dependencies.
 # Optional extras handle web UI and RL training.
-dependencies = []
+dependencies = ["networkx>=2.8"]
 
 [project.optional-dependencies]
 web = ["flask>=2.3"]

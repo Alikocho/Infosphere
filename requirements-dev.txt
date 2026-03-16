@@ -3,4 +3,5 @@ pytest>=7.0
 pytest-cov>=4.0
 flask>=2.3
 numpy>=1.24
+networkx>=2.8
 pyinstaller>=6.0
