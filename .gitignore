@@ -52,3 +52,8 @@ training_log.jsonl
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# PyInstaller
+dist/
+build/
+*.spec.bak
