@@ -29,7 +29,20 @@ Red has two paths to victory: capture a majority of nodes above a belief thresho
 
 ---
 
-## Installation
+## Downloads
+
+The easiest way to play — no Python or terminal required.
+
+| Platform | Download | Notes |
+|---|---|---|
+| **Mac** | `Infosphere-mac.zip` from [Releases](../../releases/latest) | Unzip and double-click `Infosphere.app`. On first launch, right-click → Open to bypass Gatekeeper. |
+| **Windows** | `Infosphere.exe` from [Releases](../../releases/latest) | Double-click to run. Windows may show a SmartScreen warning — click "More info → Run anyway". |
+
+Both open the game automatically in your default browser. No install, no setup.
+
+---
+
+## Installation (Python / Developer)
 
 Infosphere requires Python 3.8+. The core simulation has no external dependencies. Human play requires Flask; RL training requires NumPy.
 
@@ -445,6 +458,7 @@ Infosphere is part of a broader research programme on adversarial AI simulation.
 
 - [x] Battle replay HTML generator (narrative heatmap visualization)
 - [x] Human play via browser-based web UI (Red, Blue, or both sides)
+- [x] Standalone Mac (.app) and Windows (.exe) builds via GitHub Actions
 - [ ] PPO reinforcement learning agent (carries over from CyberWar)
 - [ ] Claude LLM agent with tool-calling interface
 - [ ] Human game logging (export decisions as supervised training data for RL)
