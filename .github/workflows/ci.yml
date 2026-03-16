@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.10", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install core (no dependencies)
+        run: pip install -e .
+
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest tests/ -v --tb=short
+
+      - name: Run smoke test (election scenario)
+        run: python main.py --scenario election --seed 42 --quiet
+
+      - name: Run smoke test (alliance scenario)
+        run: python main.py --scenario alliance --seed 7 --quiet
+
+      - name: Run smoke test (health scenario)
+        run: python main.py --scenario health --seed 99 --quiet
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install flake8
+      - name: Lint with flake8
+        run: |
+          # Fail on syntax errors and undefined names only
+          flake8 infosphere/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          # Warn on style issues but don't fail
+          flake8 infosphere/ --count --exit-zero --max-line-length=100 --statistics
