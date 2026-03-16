@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INFOSPHERE // OPERATION REPLAY</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+:root {
+  --ink:       #0d0d0b;
+  --paper:     #f5f0e8;
+  --paper2:    #ede8dc;
+  --paper3:    #e4ddd0;
+  --red:       #c41e1e;
+  --red-dark:  #8b1010;
+  --red-pale:  #f5d0d0;
+  --blue:      #1a3a6b;
+  --blue-mid:  #2756a8;
+  --blue-pale: #d0ddf5;
+  --gold:      #b8860b;
+  --gold-pale: #f5eacc;
+  --green:     #1a6b35;
+  --gray:      #6b6055;
+  --border:    #c8bfaf;
+  --mono:      'Courier Prime', monospace;
+  --display:   'Archivo Black', sans-serif;
+  --cond:      'Barlow Condensed', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* Aged paper texture */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+}
+
+/* ── Layout ── */
+.app {
+  display: grid;
+  grid-template-rows: 64px 1fr 88px;
+  grid-template-columns: 1fr 300px;
+  height: 100vh;
+}
+
+/* ── Header ── */
+header {
+  grid-column: 1 / -1;
+  background: var(--ink);
+  color: var(--paper);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 20px;
+  border-bottom: 4px solid var(--red);
+  position: relative;
+  overflow: hidden;
+}
+
+header::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(90deg,
+    var(--red) 0, var(--red) 8px,
+    transparent 8px, transparent 16px);
+}
+
+.masthead {
+  font-family: var(--display);
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: var(--paper);
+  text-transform: uppercase;
+}
+
+.masthead em {
+  color: var(--red);
+  font-style: normal;
+}
+
+.header-rule { width: 1px; height: 36px; background: #444; flex-shrink: 0; }
+
+.scenario-block { line-height: 1.3; }
+.scenario-label {
+  font-family: var(--cond);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #888;
+  text-transform: uppercase;
+}
+.scenario-name {
+  font-family: var(--cond);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: 1px;
+}
+
+.header-fill { flex: 1; }
+
+.classification {
+  font-family: var(--cond);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  padding: 4px 12px;
+  border: 1.5px solid var(--red);
+  color: var(--red);
+  text-transform: uppercase;
+}
+
+.winner-tag {
+  font-family: var(--cond);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding: 5px 14px;
+  text-transform: uppercase;
+}
+.winner-tag.red  { background: var(--red);  color: var(--paper); }
+.winner-tag.blue { background: var(--blue); color: var(--paper); }
+
+/* ── Canvas ── */
+.canvas-area {
+  background: var(--paper2);
+  position: relative;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+}
+
+/* Registration marks */
+.reg { position: absolute; width: 20px; height: 20px; z-index: 10; }
+.reg::before, .reg::after { content: ''; position: absolute; background: var(--border); }
+.reg-tl { top:10px; left:10px; }
+.reg-tl::before { top:9px; left:0; width:20px; height:1px; }
+.reg-tl::after  { top:0; left:9px; width:1px; height:20px; }
+.reg-tr { top:10px; right:10px; }
+.reg-tr::before { top:9px; left:0; width:20px; height:1px; }
+.reg-tr::after  { top:0; left:9px; width:1px; height:20px; }
+.reg-bl { bottom:10px; left:10px; }
+.reg-bl::before { top:9px; left:0; width:20px; height:1px; }
+.reg-bl::after  { top:0; left:9px; width:1px; height:20px; }
+.reg-br { bottom:10px; right:10px; }
+.reg-br::before { top:9px; left:0; width:20px; height:1px; }
+.reg-br::after  { top:0; left:9px; width:1px; height:20px; }
+
+#network-svg { width:100%; height:100%; display:block; }
+
+/* Tooltip */
+.tooltip {
+  position: absolute;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.7;
+  padding: 10px 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  max-width: 220px;
+  border-left: 3px solid var(--red);
+  z-index: 200;
+}
+.tooltip.show { opacity: 1; }
+.tt-title {
+  font-family: var(--cond);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--paper);
+  margin-bottom: 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #444;
+  text-transform: uppercase;
+}
+.tt-row { display: flex; justify-content: space-between; gap: 12px; }
+.tt-k { color: #888; }
+.tt-v { color: var(--gold); }
+.tt-v.red  { color: #ff6b6b; }
+.tt-v.blue { color: #7eb8f7; }
+
+/* ── Side panel ── */
+.side-panel {
+  background: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+
+.panel-block {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-head {
+  font-family: var(--cond);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--gray);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.panel-head::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Scores */
+.score-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.score-card {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  background: var(--paper2);
+}
+.score-label {
+  font-family: var(--cond);
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.score-label.red  { color: var(--red); }
+.score-label.blue { color: var(--blue); }
+.score-val {
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1;
+}
+.score-val.red  { color: var(--red); }
+.score-val.blue { color: var(--blue-mid); }
+
+/* Narrative belief meters */
+.belief-meter { margin-bottom: 6px; }
+.belief-label {
+  font-size: 9px;
+  color: var(--gray);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-family: var(--cond);
+  letter-spacing: 0.5px;
+}
+.belief-track {
+  height: 6px;
+  background: var(--paper3);
+  border: 1px solid var(--border);
+  position: relative;
+  overflow: hidden;
+}
+.belief-fill {
+  position: absolute;
+  left: 0; top: 0; height: 100%;
+  transition: width 0.4s ease;
+}
+.belief-fill.stolen_election { background: var(--red); }
+.belief-fill.vote_suppression { background: var(--gold); }
+.belief-fill.alliance_betrayal { background: var(--red); }
+.belief-fill.war_fatigue { background: var(--gold); }
+.belief-fill.vaccine_danger { background: var(--red); }
+.belief-fill.coverup { background: var(--gold); }
+
+/* Score chart */
+#score-chart { width:100%; height:60px; margin-top:8px; }
+
+/* Polarization gauge */
+.pol-gauge {
+  height: 8px;
+  background: var(--paper3);
+  border: 1px solid var(--border);
+  position: relative;
+  margin-top: 6px;
+  overflow: hidden;
+}
+.pol-fill {
+  position: absolute;
+  left: 0; top: 0; height: 100%;
+  background: repeating-linear-gradient(
+    45deg, #b8860b, #b8860b 3px, #f5eacc 3px, #f5eacc 6px
+  );
+  transition: width 0.4s;
+}
+
+/* Action log */
+.action-log {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.log-entry {
+  padding: 7px 14px;
+  border-bottom: 1px solid var(--paper3);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+.log-entry:hover { background: var(--paper2); }
+.log-entry.active {
+  background: var(--paper2);
+  border-left-color: var(--red);
+}
+
+.log-turn {
+  font-family: var(--cond);
+  font-size: 8px;
+  letter-spacing: 2px;
+  color: var(--gray);
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.log-action {
+  font-size: 9px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.log-action .red-a  { color: var(--red); font-weight: 700; }
+.log-action .blue-a { color: var(--blue-mid); font-weight: 700; }
+.log-action .ok  { color: var(--green); }
+.log-action .fail { color: var(--gray); }
+.log-action .det { color: var(--gold); }
+
+.log-alert {
+  font-size: 8px;
+  color: var(--gold);
+  margin-top: 2px;
+  font-family: var(--cond);
+  letter-spacing: 0.5px;
+}
+
+/* ── Timeline ── */
+.timeline {
+  grid-column: 1 / -1;
+  background: var(--ink);
+  border-top: 3px solid var(--red);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+}
+
+.ctrl-btn {
+  background: none;
+  border: 1px solid #444;
+  color: var(--paper);
+  width: 32px; height: 32px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+  flex-shrink: 0;
+}
+.ctrl-btn:hover { border-color: var(--red); color: var(--red); }
+.ctrl-btn.active { background: var(--red-dark); border-color: var(--red); color: var(--paper); }
+
+.turn-display {
+  font-family: var(--cond);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: 2px;
+  width: 72px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.scrubber-wrap {
+  flex: 1;
+  position: relative;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.scrubber-track {
+  position: absolute;
+  left: 0; right: 0;
+  height: 3px;
+  background: #333;
+}
+
+.scrubber-fill {
+  position: absolute;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--blue-mid), var(--red));
+  transition: width 0.1s;
+}
+
+.scrubber-thumb {
+  position: absolute;
+  width: 13px; height: 13px;
+  background: var(--paper);
+  border: 2px solid var(--red);
+  transform: translateX(-50%);
+  transition: left 0.1s;
+  z-index: 5;
+}
+
+.turn-pip {
+  position: absolute;
+  width: 2px;
+  height: 10px;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.turn-pip.red-win  { background: var(--red); }
+.turn-pip.blue-win { background: var(--blue-mid); }
+.turn-pip.alert    { background: var(--gold); }
+
+.speed-wrap {
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+}
+.speed-label { font-family: var(--cond); font-size: 9px; letter-spacing: 2px; color: #666; }
+.speed-sel {
+  background: #1a1a1a;
+  border: 1px solid #444;
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+/* ── SVG node styles ── */
+.node-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-anchor: middle;
+  pointer-events: none;
+  fill: var(--ink);
+}
+
+/* Pulse animation for active nodes */
+@keyframes pulse {
+  0%   { r: 0; opacity: 0.6; }
+  100% { r: 50; opacity: 0; }
+}
+@keyframes drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="masthead"><em>INFO</em>SPHERE</div>
+    <div class="header-rule"></div>
+    <div class="scenario-block">
+      <div class="scenario-label">Operation</div>
+      <div class="scenario-name" id="scenario-name">—</div>
+    </div>
+    <div class="header-fill"></div>
+    <div class="classification">Top Secret // SI</div>
+    <div class="header-rule"></div>
+    <div id="winner-tag" class="winner-tag">—</div>
+  </header>
+
+  <!-- Canvas -->
+  <div class="canvas-area" id="canvas-area">
+    <div class="reg reg-tl"></div>
+    <div class="reg reg-tr"></div>
+    <div class="reg reg-bl"></div>
+    <div class="reg reg-br"></div>
+    <svg id="network-svg"></svg>
+    <div class="tooltip" id="tooltip"></div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side-panel">
+
+    <!-- Scores -->
+    <div class="panel-block">
+      <div class="panel-head">Scores</div>
+      <div class="score-row">
+        <div class="score-card">
+          <div class="score-label red">Red Op</div>
+          <div class="score-val red" id="red-score">0.0</div>
+        </div>
+        <div class="score-card">
+          <div class="score-label blue">Blue Def</div>
+          <div class="score-val blue" id="blue-score">0.0</div>
+        </div>
+      </div>
+      <svg id="score-chart"></svg>
+    </div>
+
+    <!-- Narratives -->
+    <div class="panel-block">
+      <div class="panel-head">Narrative Spread</div>
+      <div id="narrative-meters"></div>
+    </div>
+
+    <!-- Polarization -->
+    <div class="panel-block">
+      <div class="panel-head">Polarization Index</div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--gray);margin-bottom:3px;font-family:var(--cond)">
+        <span>STABLE</span>
+        <span id="pol-val">0.00</span>
+        <span>FRACTURED</span>
+      </div>
+      <div class="pol-gauge">
+        <div class="pol-fill" id="pol-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="panel-block" style="flex:1;overflow:hidden;display:flex;flex-direction:column;padding-bottom:0">
+      <div class="panel-head" style="flex-shrink:0">Intercept Log</div>
+      <div class="action-log" id="action-log"></div>
+    </div>
+  </div>
+
+  <!-- Timeline -->
+  <div class="timeline">
+    <button class="ctrl-btn" id="btn-prev">◀</button>
+    <button class="ctrl-btn" id="btn-play">▶</button>
+    <button class="ctrl-btn" id="btn-next">▶▶</button>
+    <button class="ctrl-btn" id="btn-reset">⟳</button>
+
+    <div class="turn-display" id="turn-display">T 00/00</div>
+
+    <div class="scrubber-wrap" id="scrubber-wrap">
+      <div class="scrubber-track"></div>
+      <div class="scrubber-fill" id="scrubber-fill" style="width:0%"></div>
+      <div class="scrubber-thumb" id="scrubber-thumb" style="left:0%"></div>
+      <div id="turn-pips"></div>
+    </div>
+
+    <div class="speed-wrap">
+      <span class="speed-label">SPD</span>
+      <select class="speed-sel" id="speed-sel">
+        <option value="1600">0.5×</option>
+        <option value="900" selected>1×</option>
+        <option value="400">2×</option>
+        <option value="120">5×</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════
+const DATA = {"scenario":"Democratic Election","winner":"red","total_turns":6,"primary_narrative":"stolen_election","nodes":[{"id":"swing_rural","label":"Rural Swing Voters","type":"demographic","size":3,"reach":0.4},{"id":"swing_suburban","label":"Suburban Swing Voters","type":"demographic","size":4,"reach":0.5},{"id":"youth_vote","label":"Youth Voters","type":"demographic","size":2,"reach":0.6},{"id":"legacy_tv","label":"Legacy Television","type":"media","size":1,"reach":0.85},{"id":"online_news","label":"Online News Aggregators","type":"media","size":1,"reach":0.7},{"id":"social_alpha","label":"Social Platform Alpha","type":"platform","size":1,"reach":0.9},{"id":"social_beta","label":"Social Platform Beta","type":"platform","size":1,"reach":0.75},{"id":"partisan_right","label":"Right Partisan Bloc","type":"demographic","size":2,"reach":0.55},{"id":"partisan_left","label":"Left Partisan Bloc","type":"demographic","size":2,"reach":0.55},{"id":"election_auth","label":"Election Authority","type":"institution","size":1,"reach":0.65},{"id":"foreign_amp","label":"Foreign Amplifier","type":"foreign","size":1,"reach":0.5}],"edges":[{"source":"foreign_amp","target":"social_alpha","bandwidth":0.8,"trust":0.3},{"source":"foreign_amp","target":"social_beta","bandwidth":0.7,"trust":0.3},{"source":"social_alpha","target":"swing_rural","bandwidth":0.9,"trust":0.5},{"source":"social_alpha","target":"swing_suburban","bandwidth":0.8,"trust":0.5},{"source":"social_alpha","target":"youth_vote","bandwidth":0.9,"trust":0.6},{"source":"social_beta","target":"swing_suburban","bandwidth":0.7,"trust":0.5},{"source":"social_beta","target":"partisan_right","bandwidth":0.8,"trust":0.6},{"source":"social_beta","target":"partisan_left","bandwidth":0.7,"trust":0.6},{"source":"legacy_tv","target":"swing_rural","bandwidth":0.7,"trust":0.75},{"source":"legacy_tv","target":"swing_suburban","bandwidth":0.6,"trust":0.7},{"source":"online_news","target":"youth_vote","bandwidth":0.7,"trust":0.55},{"source":"online_news","target":"swing_suburban","bandwidth":0.6,"trust":0.55},{"source":"partisan_right","target":"swing_rural","bandwidth":0.5,"trust":0.5},{"source":"partisan_left","target":"swing_suburban","bandwidth":0.4,"trust":0.45},{"source":"election_auth","target":"legacy_tv","bandwidth":0.6,"trust":0.8},{"source":"election_auth","target":"online_news","bandwidth":0.5,"trust":0.75}],"narratives":{"stolen_election":{"label":"The election is rigged","plausibility":0.55,"virality":0.7,"stickiness":0.65,"divisiveness":0.8},"vote_suppression":{"label":"Your vote won't count","plausibility":0.45,"virality":0.55,"stickiness":0.5,"divisiveness":0.6}},"history":[{"turn":1,"red_actions":[{"type":"elite_capture","target_node":"social_alpha","target_edge":null,"narrative_id":null},{"type":"inject_narrative","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"election_auth","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"youth_vote","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"partisan_right","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"partisan_left","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"success","message":"Elite capture of social_alpha (reach=0.90). Node now amplifies red narratives.","reward":4.5},{"status":"success","message":"Injected 'The election is rigged' into social_alpha (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into legacy_tv (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into social_beta (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into online_news (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into election_auth (+0.23 belief).","reward":0.69},{"status":"success","message":"Injected 'The election is rigged' into youth_vote (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into partisan_right (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into partisan_left (+0.35 belief).","reward":1.05}],"blue_actions":[{"type":"prebunk","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"election_auth","target_edge":null,"narrative_id":"stolen_election"}],"blue_outcomes":[{"status":"success","message":"Prebunked 'The election is rigged' in social_alpha. Future injections blocked.","reward":1.5},{"status":"success","message":"Prebunked 'The election is rigged' in legacy_tv. Future injections blocked.","reward":1.5},{"status":"success","message":"Prebunked 'The election is rigged' in social_beta. Future injections blocked.","reward":1.5},{"status":"success","message":"Prebunked 'The election is rigged' in online_news. Future injections blocked.","reward":1.5},{"status":"success","message":"Prebunked 'The election is rigged' in election_auth. Future injections blocked.","reward":1.5}],"red_score":6.38,"blue_score":25.48,"polarization":0.0,"alerts":[],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.01897065625,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.981},"swing_suburban":{"beliefs":{"stolen_election":0.0200710125,"vote_suppression":0.0},"resilience":0.45,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.98},"youth_vote":{"beliefs":{"stolen_election":0.35,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"legacy_tv":{"beliefs":{"stolen_election":0.34908664692064884,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.651},"online_news":{"beliefs":{"stolen_election":0.3489806327239385,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.651},"social_alpha":{"beliefs":{"stolen_election":0.348089,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.652},"social_beta":{"beliefs":{"stolen_election":0.3484565,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.652},"partisan_right":{"beliefs":{"stolen_election":0.35,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"partisan_left":{"beliefs":{"stolen_election":0.35,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"election_auth":{"beliefs":{"stolen_election":0.23051372588289878},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.769},"foreign_amp":{"beliefs":{},"resilience":0.2,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":1.0}}},{"turn":2,"red_actions":[{"type":"elite_capture","target_node":"legacy_tv","target_edge":null,"narrative_id":null},{"type":"inject_narrative","target_node":"swing_suburban","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"foreign_amp","target_edge":null,"narrative_id":"stolen_election"},{"type":"inject_narrative","target_node":"swing_rural","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"failure","message":"Elite capture of legacy_tv failed (too resilient).","reward":-0.5},{"status":"success","message":"Injected 'The election is rigged' into swing_suburban (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into foreign_amp (+0.35 belief).","reward":1.05},{"status":"success","message":"Injected 'The election is rigged' into swing_rural (+0.33 belief).","reward":1.0}],"blue_actions":[{"type":"prebunk","target_node":"swing_suburban","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"foreign_amp","target_edge":null,"narrative_id":"stolen_election"},{"type":"prebunk","target_node":"swing_rural","target_edge":null,"narrative_id":"stolen_election"}],"blue_outcomes":[{"status":"success","message":"Prebunked 'The election is rigged' in swing_suburban. Future injections blocked.","reward":1.5},{"status":"success","message":"Prebunked 'The election is rigged' in foreign_amp. Future injections blocked.","reward":1.5}],"red_score":10.39,"blue_score":22.68,"polarization":0.0,"alerts":["Suspicious activity around legacy_tv"],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.35079643064669896,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.649},"swing_suburban":{"beliefs":{"stolen_election":0.36895470770344024,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.631},"youth_vote":{"beliefs":{"stolen_election":0.34992995078380223,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"legacy_tv":{"beliefs":{"stolen_election":0.3481802755122363,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":25.0,"neutrality":0.652},"online_news":{"beliefs":{"stolen_election":0.34796996192495083,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.652},"social_alpha":{"beliefs":{"stolen_election":0.34809943406,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.652},"social_beta":{"beliefs":{"stolen_election":0.348463306835,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.652},"partisan_right":{"beliefs":{"stolen_election":0.34997082785,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"partisan_left":{"beliefs":{"stolen_election":0.3499761760775,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65},"election_auth":{"beliefs":{"stolen_election":0.23051372588289878},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.769},"foreign_amp":{"beliefs":{"stolen_election":0.35},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65}}},{"turn":3,"red_actions":[{"type":"elite_capture","target_node":"legacy_tv","target_edge":null,"narrative_id":null},{"type":"amplify","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"election_auth","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"youth_vote","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"success","message":"Elite capture of legacy_tv (reach=0.85). Node now amplifies red narratives.","reward":4.25},{"status":"success","message":"Amplified 'The election is rigged' in social_alpha (+0.20).","reward":0.4},{"status":"success","message":"Amplified 'The election is rigged' in legacy_tv (+0.15).","reward":0.3},{"status":"success","message":"Amplified 'The election is rigged' in social_beta (+0.20).","reward":0.4},{"status":"success","message":"Amplified 'The election is rigged' in online_news (+0.19).","reward":0.39},{"status":"success","message":"Amplified 'The election is rigged' in election_auth (+0.11).","reward":0.22},{"status":"success","message":"Amplified 'The election is rigged' in youth_vote (+0.10).","reward":0.21}],"blue_actions":[{"type":"debunk","target_node":"swing_suburban","target_edge":null,"narrative_id":"stolen_election"},{"type":"debunk","target_node":"swing_rural","target_edge":null,"narrative_id":"stolen_election"},{"type":"monitor_edge","target_node":"social_alpha","target_edge":null,"narrative_id":null}],"blue_outcomes":[{"status":"success","message":"Debunked 'The election is rigged' in swing_suburban (-0.16 belief).","reward":0.48},{"status":"success","message":"Debunked 'The election is rigged' in swing_rural (-0.17 belief).","reward":0.5},{"status":"success","message":"Monitoring node social_alpha.","reward":0.5}],"red_score":16.0,"blue_score":22.39,"polarization":0.0,"alerts":[],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.2055354746097226,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.794},"swing_suburban":{"beliefs":{"stolen_election":0.22836366730866628,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.772},"youth_vote":{"beliefs":{"stolen_election":0.456479967486885,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.544},"legacy_tv":{"beliefs":{"stolen_election":0.49577440942900386,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":true,"silenced":false,"monitored":false,"alert_level":25.0,"neutrality":0.504},"online_news":{"beliefs":{"stolen_election":0.5409818623711923,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.459},"social_alpha":{"beliefs":{"stolen_election":0.5459313051042908,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.454},"social_beta":{"beliefs":{"stolen_election":0.5475880836518576,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.452},"partisan_right":{"beliefs":{"stolen_election":0.3537223357028165,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.646},"partisan_left":{"beliefs":{"stolen_election":0.353039824940742,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.647},"election_auth":{"beliefs":{"stolen_election":0.3385635697801724},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.661},"foreign_amp":{"beliefs":{"stolen_election":0.35},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65}}},{"turn":4,"red_actions":[{"type":"elite_capture","target_node":"social_beta","target_edge":null,"narrative_id":null},{"type":"amplify","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"election_auth","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"youth_vote","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"success","message":"Elite capture of social_beta (reach=0.75). Node now amplifies red narratives.","reward":3.75},{"status":"success","message":"Amplified 'The election is rigged' in social_alpha (+0.19).","reward":0.38},{"status":"success","message":"Amplified 'The election is rigged' in legacy_tv (+0.15).","reward":0.3},{"status":"success","message":"Amplified 'The election is rigged' in social_beta (+0.18).","reward":0.36},{"status":"success","message":"Amplified 'The election is rigged' in online_news (+0.14).","reward":0.28},{"status":"success","message":"Amplified 'The election is rigged' in election_auth (+0.17).","reward":0.34},{"status":"success","message":"Amplified 'The election is rigged' in youth_vote (+0.18).","reward":0.37}],"blue_actions":[{"type":"debunk","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"debunk","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"monitor_edge","target_node":"legacy_tv","target_edge":null,"narrative_id":null}],"blue_outcomes":[{"status":"success","message":"Debunked 'The election is rigged' in social_beta (-0.14 belief).","reward":0.43},{"status":"success","message":"Debunked 'The election is rigged' in social_alpha (-0.09 belief).","reward":0.27},{"status":"success","message":"Monitoring node legacy_tv.","reward":0.5}],"red_score":18.53,"blue_score":21.2,"polarization":0.0,"alerts":[],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.20646256865943627,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.794},"swing_suburban":{"beliefs":{"stolen_election":0.23367614682104057,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.766},"youth_vote":{"beliefs":{"stolen_election":0.6417471822022645,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.358},"legacy_tv":{"beliefs":{"stolen_election":0.6457463324932485,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":25.0,"neutrality":0.354},"online_news":{"beliefs":{"stolen_election":0.6772161277045375,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.323},"social_alpha":{"beliefs":{"stolen_election":0.6442923844651866,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.356},"social_beta":{"beliefs":{"stolen_election":0.5814772245250551,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":true,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.419},"partisan_right":{"beliefs":{"stolen_election":0.36020825508483945,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.64},"partisan_left":{"beliefs":{"stolen_election":0.3583524609331463,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.642},"election_auth":{"beliefs":{"stolen_election":0.5108394793001847},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.489},"foreign_amp":{"beliefs":{"stolen_election":0.35},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.65}}},{"turn":5,"red_actions":[{"type":"elite_capture","target_node":"online_news","target_edge":null,"narrative_id":null},{"type":"amplify","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"election_auth","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"partisan_right","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"partisan_left","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"swing_suburban","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"foreign_amp","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"failure","message":"Elite capture of online_news failed (too resilient).","reward":-0.5},{"status":"success","message":"Amplified 'The election is rigged' in social_beta (+0.15).","reward":0.29},{"status":"success","message":"Amplified 'The election is rigged' in election_auth (+0.13).","reward":0.26},{"status":"success","message":"Amplified 'The election is rigged' in partisan_right (+0.19).","reward":0.38},{"status":"success","message":"Amplified 'The election is rigged' in partisan_left (+0.19).","reward":0.38},{"status":"success","message":"Amplified 'The election is rigged' in swing_suburban (+0.20).","reward":0.4},{"status":"success","message":"Amplified 'The election is rigged' in foreign_amp (+0.16).","reward":0.32}],"blue_actions":[{"type":"debunk","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"debunk","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"monitor_edge","target_node":"social_beta","target_edge":null,"narrative_id":null}],"blue_outcomes":[{"status":"success","message":"Debunked 'The election is rigged' in online_news (-0.12 belief).","reward":0.36},{"status":"success","message":"Debunked 'The election is rigged' in legacy_tv (-0.08 belief).","reward":0.24},{"status":"success","message":"Monitoring node social_beta.","reward":0.5}],"red_score":28.26,"blue_score":19.18,"polarization":0.0,"alerts":["Suspicious activity around online_news"],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.21952094763614363,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.78},"swing_suburban":{"beliefs":{"stolen_election":0.44556123474531445,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.554},"youth_vote":{"beliefs":{"stolen_election":0.6408632307467041,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.359},"legacy_tv":{"beliefs":{"stolen_election":0.565642319983223,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":25.0,"neutrality":0.434},"online_news":{"beliefs":{"stolen_election":0.5574890575586541,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":25.0,"neutrality":0.443},"social_alpha":{"beliefs":{"stolen_election":0.6435610422317253,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.356},"social_beta":{"beliefs":{"stolen_election":0.7263350209504613,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.274},"partisan_right":{"beliefs":{"stolen_election":0.5530835635965258,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.447},"partisan_left":{"beliefs":{"stolen_election":0.5533544643852515,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.447},"election_auth":{"beliefs":{"stolen_election":0.6412988110784201},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.359},"foreign_amp":{"beliefs":{"stolen_election":0.5103469204612873},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.49}}},{"turn":6,"red_actions":[{"type":"elite_capture","target_node":"online_news","target_edge":null,"narrative_id":null},{"type":"amplify","target_node":"legacy_tv","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"online_news","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"partisan_right","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"partisan_left","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"swing_suburban","target_edge":null,"narrative_id":"stolen_election"},{"type":"amplify","target_node":"foreign_amp","target_edge":null,"narrative_id":"stolen_election"}],"red_outcomes":[{"status":"success","message":"Elite capture of online_news (reach=0.70). Node now amplifies red narratives.","reward":3.5},{"status":"success","message":"Amplified 'The election is rigged' in legacy_tv (+0.12).","reward":0.25},{"status":"success","message":"Amplified 'The election is rigged' in online_news (+0.17).","reward":0.34},{"status":"success","message":"Amplified 'The election is rigged' in partisan_right (+0.14).","reward":0.28},{"status":"success","message":"Amplified 'The election is rigged' in partisan_left (+0.18).","reward":0.36},{"status":"success","message":"Amplified 'The election is rigged' in swing_suburban (+0.20).","reward":0.39},{"status":"success","message":"Amplified 'The election is rigged' in foreign_amp (+0.12).","reward":0.25}],"blue_actions":[{"type":"debunk","target_node":"social_beta","target_edge":null,"narrative_id":"stolen_election"},{"type":"debunk","target_node":"social_alpha","target_edge":null,"narrative_id":"stolen_election"},{"type":"monitor_edge","target_node":"online_news","target_edge":null,"narrative_id":null}],"blue_outcomes":[{"status":"success","message":"Debunked 'The election is rigged' in social_beta (-0.10 belief).","reward":0.3},{"status":"success","message":"Debunked 'The election is rigged' in social_alpha (-0.11 belief).","reward":0.32},{"status":"success","message":"Monitoring node online_news.","reward":0.5}],"red_score":30.78,"blue_score":17.42,"polarization":0.0,"alerts":[],"snapshot":{"swing_rural":{"beliefs":{"stolen_election":0.228317064229727,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.772},"swing_suburban":{"beliefs":{"stolen_election":0.6423205032987237,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.358},"youth_vote":{"beliefs":{"stolen_election":0.6391817583335738,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.361},"legacy_tv":{"beliefs":{"stolen_election":0.6901365444893963,"vote_suppression":0.0},"resilience":0.65,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":25.0,"neutrality":0.31},"online_news":{"beliefs":{"stolen_election":0.7270467946835139,"vote_suppression":0.0},"resilience":0.5,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":25.0,"neutrality":0.273},"social_alpha":{"beliefs":{"stolen_election":0.5382689447953207,"vote_suppression":0.0},"resilience":0.35,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.462},"social_beta":{"beliefs":{"stolen_election":0.627012309258769,"vote_suppression":0.0},"resilience":0.4,"polarization":0.0,"captured":true,"silenced":false,"monitored":true,"alert_level":0.0,"neutrality":0.373},"partisan_right":{"beliefs":{"stolen_election":0.6902940279732072,"vote_suppression":0.0},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.31},"partisan_left":{"beliefs":{"stolen_election":0.7308469856773372,"vote_suppression":0.0},"resilience":0.3,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.269},"election_auth":{"beliefs":{"stolen_election":0.6412988110784201},"resilience":0.85,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.359},"foreign_amp":{"beliefs":{"stolen_election":0.6336660057199793},"resilience":0.25,"polarization":0.0,"captured":false,"silenced":false,"monitored":false,"alert_level":0.0,"neutrality":0.366}}}]};
+
+// ════════════════════════════════════════════════════════
+// NODE LAYOUT — fixed positions by id
+// ════════════════════════════════════════════════════════
+const POSITIONS = {
+  // Election
+  foreign_amp:    {x:0.15, y:0.08},
+  social_alpha:   {x:0.35, y:0.18},
+  social_beta:    {x:0.65, y:0.18},
+  legacy_tv:      {x:0.20, y:0.38},
+  online_news:    {x:0.50, y:0.35},
+  election_auth:  {x:0.80, y:0.38},
+  partisan_right: {x:0.22, y:0.62},
+  swing_rural:    {x:0.40, y:0.72},
+  swing_suburban: {x:0.60, y:0.72},
+  partisan_left:  {x:0.78, y:0.62},
+  youth_vote:     {x:0.50, y:0.88},
+  // Alliance
+  adversary_rt:   {x:0.12, y:0.10},
+  opposition_a:   {x:0.22, y:0.35},
+  opposition_b:   {x:0.40, y:0.25},
+  state_media_1:  {x:0.60, y:0.25},
+  state_media_2:  {x:0.78, y:0.35},
+  intl_press:     {x:0.50, y:0.10},
+  alliance_hq:    {x:0.50, y:0.55},
+  state_anchor:   {x:0.30, y:0.72},
+  state_waverer:  {x:0.50, y:0.82},
+  state_small:    {x:0.70, y:0.72},
+  // Health
+  foreign_disinfo: {x:0.12, y:0.10},
+  alt_media:       {x:0.28, y:0.25},
+  skeptic_network: {x:0.18, y:0.50},
+  social_health:   {x:0.50, y:0.18},
+  mainstream_media:{x:0.72, y:0.25},
+  health_auth:     {x:0.82, y:0.50},
+  med_community:   {x:0.75, y:0.70},
+  local_leaders:   {x:0.60, y:0.85},
+  urban_pop:       {x:0.45, y:0.60},
+  rural_pop:       {x:0.28, y:0.78},
+  elderly:         {x:0.50, y:0.88},
+};
+
+const TYPE_SHAPE = {
+  demographic: 'circle',
+  media:       'diamond',
+  elite:       'square',
+  institution: 'hexagon',
+  platform:    'circle',
+  foreign:     'triangle',
+};
+
+const TYPE_COLOR = {
+  demographic: '#1a3a6b',
+  media:       '#6b3a1a',
+  elite:       '#1a6b35',
+  institution: '#6b1a6b',
+  platform:    '#1a5a6b',
+  foreign:     '#6b6b1a',
+};
+
+// ════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════
+let turn = 0;
+let playing = false;
+let playTimer = null;
+let svgW = 0, svgH = 0;
+
+const svg       = document.getElementById('network-svg');
+const tooltip   = document.getElementById('tooltip');
+const logEl     = document.getElementById('action-log');
+const narMeters = document.getElementById('narrative-meters');
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+function init() {
+  document.getElementById('scenario-name').textContent = DATA.scenario;
+  const wt = document.getElementById('winner-tag');
+  wt.textContent = DATA.winner.toUpperCase() + ' WINS';
+  wt.className = 'winner-tag ' + DATA.winner;
+
+  buildScoreChart();
+  buildNarrativeMeters();
+  buildTurnPips();
+  buildLog();
+  resizeAndDraw();
+
+  window.addEventListener('resize', resizeAndDraw);
+
+  // Scrubber
+  const wrap = document.getElementById('scrubber-wrap');
+  let dragging = false;
+  wrap.addEventListener('mousedown', e => { dragging = true; scrub(e); });
+  window.addEventListener('mousemove', e => { if (dragging) scrub(e); });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  document.getElementById('btn-prev').onclick  = () => { stop(); setTurn(turn - 1); };
+  document.getElementById('btn-next').onclick  = () => { stop(); setTurn(turn + 1); };
+  document.getElementById('btn-reset').onclick = () => { stop(); setTurn(0); };
+  document.getElementById('btn-play').onclick  = togglePlay;
+}
+
+function resizeAndDraw() {
+  const area = document.getElementById('canvas-area');
+  svgW = area.clientWidth;
+  svgH = area.clientHeight;
+  svg.setAttribute('width', svgW);
+  svg.setAttribute('height', svgH);
+  draw(turn);
+}
+
+// ════════════════════════════════════════════════════════
+// TURN CONTROL
+// ════════════════════════════════════════════════════════
+function setTurn(t) {
+  turn = Math.max(0, Math.min(DATA.total_turns, t));
+  const pct = DATA.total_turns > 0 ? turn / DATA.total_turns * 100 : 0;
+  document.getElementById('scrubber-fill').style.width  = pct + '%';
+  document.getElementById('scrubber-thumb').style.left  = pct + '%';
+  document.getElementById('turn-display').textContent   =
+    `T ${String(turn).padStart(2,'0')}/${String(DATA.total_turns).padStart(2,'0')}`;
+  draw(turn);
+  updateScores(turn);
+  updateNarrativeMeters(turn);
+  updatePolarization(turn);
+  highlightLog(turn);
+}
+
+function scrub(e) {
+  const wrap = document.getElementById('scrubber-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const pct  = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  setTurn(Math.round(pct * DATA.total_turns));
+}
+
+function togglePlay() {
+  playing ? stop() : start();
+}
+function start() {
+  playing = true;
+  document.getElementById('btn-play').classList.add('active');
+  document.getElementById('btn-play').textContent = '⏸';
+  tick();
+}
+function stop() {
+  playing = false;
+  clearTimeout(playTimer);
+  document.getElementById('btn-play').classList.remove('active');
+  document.getElementById('btn-play').textContent = '▶';
+}
+function tick() {
+  if (!playing) return;
+  if (turn >= DATA.total_turns) { stop(); return; }
+  setTurn(turn + 1);
+  playTimer = setTimeout(tick, parseInt(document.getElementById('speed-sel').value));
+}
+
+// ════════════════════════════════════════════════════════
+// NETWORK DRAWING
+// ════════════════════════════════════════════════════════
+function pos(nodeId) {
+  const p = POSITIONS[nodeId];
+  if (!p) return { x: svgW / 2, y: svgH / 2 };
+  return { x: p.x * svgW, y: p.y * svgH };
+}
+
+function getSnap(t) {
+  if (t === 0) {
+    // Initial state: all neutral
+    const s = {};
+    DATA.nodes.forEach(n => { s[n.id] = {beliefs:{}, resilience:n.size*0.1+0.35, polarization:0, captured:false, silenced:false, monitored:false, alert_level:0, neutrality:1.0}; });
+    return s;
+  }
+  return DATA.history[t - 1].snapshot;
+}
+
+function beliefColor(bel, nar_id) {
+  // bel 0→1, returns rgba string
+  const primary = DATA.primary_narrative;
+  const isPrimary = nar_id === primary;
+  if (isPrimary) {
+    // red gradient
+    const r = Math.round(196 + (255-196)*bel);
+    const g = Math.round(30  * (1-bel));
+    const b = Math.round(30  * (1-bel));
+    return `rgb(${r},${g},${b})`;
+  } else {
+    const r = Math.round(184*bel + 240*(1-bel));
+    const g = Math.round(134*bel + 220*(1-bel));
+    const b = Math.round(11 *bel + 180*(1-bel));
+    return `rgb(${r},${g},${b})`;
+  }
+}
+
+function dominantBelief(snap_node) {
+  const b = snap_node.beliefs || {};
+  let best = null, bestV = 0;
+  for (const [k,v] of Object.entries(b)) {
+    if (v > bestV) { best = k; bestV = v; }
+  }
+  return {id: best, val: bestV};
+}
+
+function nodeFillColor(snap_node, node) {
+  const dom = dominantBelief(snap_node);
+  if (dom.val < 0.08) return '#f0ebe0'; // neutral
+  return beliefColor(dom.val, dom.id);
+}
+
+function draw(t) {
+  if (!svgW || !svgH) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const snap    = getSnap(t);
+  const turnRec = t > 0 ? DATA.history[t - 1] : null;
+
+  // ── Defs ──────────────────────────────────────────────
+  const defs = el('defs');
+
+  // Subtle grid pattern
+  const pat = el('pattern', {id:'grid', width:'40', height:'40',
+    patternUnits:'userSpaceOnUse'});
+  pat.appendChild(el('path', {d:'M 40 0 L 0 0 0 40', fill:'none',
+    stroke:'#d8d0c4', 'stroke-width':'0.5'}));
+  defs.appendChild(pat);
+  svg.appendChild(defs);
+
+  // Grid background
+  svg.appendChild(el('rect', {width:svgW, height:svgH, fill:'url(#grid)', opacity:'0.6'}));
+
+  // ── Edges ──────────────────────────────────────────────
+  DATA.edges.forEach(edge => {
+    const sp = pos(edge.source);
+    const tp = pos(edge.target);
+
+    const isActive = turnRec && (
+      turnRec.red_actions.some(a => a.target_edge &&
+        a.target_edge[0]===edge.source && a.target_edge[1]===edge.target) ||
+      turnRec.blue_actions.some(a => a.target_edge &&
+        a.target_edge[0]===edge.source && a.target_edge[1]===edge.target)
+    );
+
+    // Edge thickness = bandwidth, color = trust
+    const trustGray = Math.round(80 + edge.trust * 120);
+    const stroke = isActive ? '#c41e1e' :
+      `rgb(${trustGray},${Math.round(trustGray*0.9)},${Math.round(trustGray*0.8)})`;
+    const sw = 0.5 + edge.bandwidth * 2.5 + (isActive ? 1 : 0);
+
+    // Curved edge
+    const mx = (sp.x + tp.x) / 2 + (tp.y - sp.y) * 0.08;
+    const my = (sp.y + tp.y) / 2 - (tp.x - sp.x) * 0.08;
+
+    const path = el('path', {
+      d: `M ${sp.x} ${sp.y} Q ${mx} ${my} ${tp.x} ${tp.y}`,
+      stroke, 'stroke-width': sw, fill: 'none', opacity: '0.65',
+    });
+    svg.appendChild(path);
+
+    // Arrow
+    const dx = tp.x - mx, dy = tp.y - my;
+    const len = Math.sqrt(dx*dx+dy*dy) || 1;
+    const nx = dx/len, ny = dy/len;
+    const R = 18; // node radius offset
+    const ax = tp.x - nx*R, ay = tp.y - ny*R;
+    const perp = 4;
+    const arr = el('polygon', {
+      points: `${ax},${ay} ${ax-nx*7+ny*perp},${ay-ny*7-nx*perp} ${ax-nx*7-ny*perp},${ay-ny*7+nx*perp}`,
+      fill: stroke, opacity: '0.7',
+    });
+    svg.appendChild(arr);
+  });
+
+  // ── Nodes ──────────────────────────────────────────────
+  DATA.nodes.forEach(node => {
+    const p      = pos(node.id);
+    const sn     = snap[node.id] || {};
+    const dom    = dominantBelief(sn);
+    const fill   = nodeFillColor(sn, node);
+    const typeC  = TYPE_COLOR[node.type] || '#333';
+    const r      = 14 + node.size * 3 + node.reach * 8;
+
+    // Active turn highlight pulse
+    const isRedTarget  = turnRec && turnRec.red_actions.some(a => a.target_node === node.id);
+    const isBlueTarget = turnRec && turnRec.blue_actions.some(a => a.target_node === node.id);
+
+    if (isRedTarget || isBlueTarget) {
+      const ring = el('circle', {cx:p.x, cy:p.y, r, fill:'none',
+        stroke: isRedTarget ? '#c41e1e' : '#1a3a6b', 'stroke-width': 1});
+      const a1 = el('animate', {attributeName:'r', from:r, to:r+30, dur:'1.2s', repeatCount:'3'});
+      const a2 = el('animate', {attributeName:'opacity', from:'0.7', to:'0', dur:'1.2s', repeatCount:'3'});
+      ring.appendChild(a1); ring.appendChild(a2);
+      svg.appendChild(ring);
+    }
+
+    // Captured halo
+    if (sn.captured) {
+      const halo = el('circle', {cx:p.x, cy:p.y, r:r+5,
+        fill:'none', stroke:'#c41e1e', 'stroke-width':2,
+        'stroke-dasharray':'4 3', opacity:'0.8'});
+      svg.appendChild(halo);
+    }
+
+    // Belief fill arc (donut) if belief > 0
+    if (dom.val > 0.05) {
+      const pct    = Math.min(1, dom.val);
+      const angle  = pct * 2 * Math.PI;
+      const x2     = p.x + r * Math.sin(angle);
+      const y2     = p.y - r * Math.cos(angle);
+      const large  = pct > 0.5 ? 1 : 0;
+      const arcPath = pct >= 0.995
+        ? `M ${p.x} ${p.y-r} A ${r} ${r} 0 1 1 ${p.x-0.01} ${p.y-r} Z`
+        : `M ${p.x} ${p.y-r} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${p.x} ${p.y} Z`;
+      const arcColor = dom.id === DATA.primary_narrative ? '#c41e1e' : '#b8860b';
+      svg.appendChild(el('path', {d:arcPath, fill:arcColor, opacity:'0.18'}));
+    }
+
+    // Node circle
+    const circle = el('circle', {
+      cx:p.x, cy:p.y, r,
+      fill,
+      stroke: sn.captured ? '#c41e1e' : typeC,
+      'stroke-width': sn.captured ? 2.5 : 1.5,
+    });
+    svg.appendChild(circle);
+
+    // Type indicator dot
+    const dot = el('circle', {cx:p.x, cy:p.y-r+5, r:3, fill:typeC, opacity:'0.8'});
+    svg.appendChild(dot);
+
+    // Belief percentage text inside node
+    if (dom.val > 0.08) {
+      const pctTxt = el('text', {
+        x:p.x, y:p.y+4,
+        fill: dom.val > 0.5 ? '#fff' : '#0d0d0b',
+        'font-family':'Barlow Condensed, sans-serif',
+        'font-size':'11', 'font-weight':'700',
+        'text-anchor':'middle',
+      });
+      pctTxt.textContent = Math.round(dom.val*100) + '%';
+      svg.appendChild(pctTxt);
+    }
+
+    // Alert marker
+    if (sn.alert_level > 40) {
+      const alertTri = el('text', {
+        x: p.x + r - 2, y: p.y - r + 4,
+        fill:'#b8860b', 'font-size':'10', 'text-anchor':'middle'});
+      alertTri.textContent = '⚠';
+      svg.appendChild(alertTri);
+    }
+
+    // Node label below
+    const lbl = el('text', {
+      x:p.x, y:p.y+r+12,
+      'font-family':'Barlow Condensed, sans-serif',
+      'font-size':'8', 'font-weight':'700',
+      'letter-spacing':'1',
+      'text-anchor':'middle',
+      fill: '#4a3a2a',
+      'text-transform':'uppercase',
+    });
+    lbl.textContent = node.id.replace(/_/g,' ').toUpperCase();
+    svg.appendChild(lbl);
+
+    // Hitbox
+    const hit = el('circle', {cx:p.x, cy:p.y, r:r+6, fill:'transparent', cursor:'pointer'});
+    hit.addEventListener('mouseenter', e => showTT(e, node, sn));
+    hit.addEventListener('mousemove',  moveTooltip);
+    hit.addEventListener('mouseleave', hideTT);
+    svg.appendChild(hit);
+  });
+
+  // ── Action annotation ────────────────────────────────
+  if (turnRec) drawAnnotation(turnRec);
+}
+
+function drawAnnotation(rec) {
+  const icons = {
+    inject_narrative:'💉', amplify:'📢', spoof_source:'🎭',
+    wedge:'⚔', elite_capture:'👑', flood:'🌊', astroturf:'🌱',
+    prebunk:'🛡', debunk:'❌', boost_resilience:'💪',
+    authenticate:'🔍', monitor_edge:'👁', platform_action:'🔇',
+    alliance_signal:'🤝', strategic_comms:'📡', pass:'—',
+  };
+
+  const allActions = [
+    ...rec.red_actions.map((a,i)  => ({...a, outcome:rec.red_outcomes[i],  team:'red'})),
+    ...rec.blue_actions.map((a,i) => ({...a, outcome:rec.blue_outcomes[i], team:'blue'})),
+  ].slice(0,6);
+
+  allActions.forEach((a, i) => {
+    const y  = 16 + i * 17;
+    const col = a.team === 'red' ? '#c41e1e' : '#1a3a6b';
+    const icon = icons[a.type] || '?';
+    const tgt = a.target_node || (a.target_edge ? a.target_edge.join('→') : '');
+    const txt  = `${icon} ${a.type.toUpperCase().replace(/_/g,' ')}${tgt ? ' → '+tgt : ''}`;
+
+    svg.appendChild(el('rect', {x:svgW-240, y:y-11, width:228, height:14,
+      fill:'#f5f0e8', stroke:col, 'stroke-width':'0.5', opacity:'0.92'}));
+
+    const t = el('text', {x:svgW-232, y:y,
+      fill:col, 'font-family':'Barlow Condensed, sans-serif',
+      'font-size':'9', 'font-weight':'600', 'letter-spacing':'0.5'});
+    t.textContent = txt.substring(0,36);
+    svg.appendChild(t);
+
+    const statusC = a.outcome.status === 'success' ? '#1a6b35' :
+                    a.outcome.status === 'detected' ? '#b8860b' : '#999';
+    svg.appendChild(el('circle', {cx:svgW-16, cy:y-4, r:3, fill:statusC}));
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// SCORE CHART
+// ════════════════════════════════════════════════════════
+function buildScoreChart() {
+  const cs = document.getElementById('score-chart');
+  const W = 272, H = 60;
+  cs.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const n = DATA.history.length;
+  if (!n) return;
+
+  const maxS = Math.max(...DATA.history.flatMap(h => [h.red_score, h.blue_score]), 1);
+
+  function pts(vals) {
+    return vals.map((v,i) => {
+      const x = (i / Math.max(n-1,1)) * (W-6) + 3;
+      const y = H - 3 - (v/maxS)*(H-8);
+      return `${x},${y}`;
+    }).join(' ');
+  }
+
+  const reds  = DATA.history.map(h => h.red_score);
+  const blues = DATA.history.map(h => h.blue_score);
+
+  // Grid
+  [0.25,0.5,0.75,1].forEach(p => {
+    const y = H - 3 - p*(H-8);
+    const l = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',3); l.setAttribute('x2',W-3);
+    l.setAttribute('y1',y); l.setAttribute('y2',y);
+    l.setAttribute('stroke','#d0c8bc'); l.setAttribute('stroke-width','0.5');
+    cs.appendChild(l);
+  });
+
+  // Area + line
+  [[blues,'#1a3a6b'],[reds,'#c41e1e']].forEach(([vals,col]) => {
+    const ptsStr = pts(vals);
+    const lastX  = (n-1)/Math.max(n-1,1)*(W-6)+3;
+    const area = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    area.setAttribute('points', `3,${H-3} ${ptsStr} ${lastX},${H-3}`);
+    area.setAttribute('fill', col); area.setAttribute('opacity','0.07');
+    cs.appendChild(area);
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+    line.setAttribute('points', ptsStr);
+    line.setAttribute('stroke', col); line.setAttribute('stroke-width','1.5');
+    line.setAttribute('fill','none');
+    cs.appendChild(line);
+  });
+
+  const cur = document.createElementNS('http://www.w3.org/2000/svg','line');
+  cur.setAttribute('id','chart-cursor');
+  cur.setAttribute('stroke','#b8860b'); cur.setAttribute('stroke-width','1');
+  cur.setAttribute('y1','0'); cur.setAttribute('y2',H); cur.setAttribute('opacity','0.7');
+  cs.appendChild(cur);
+}
+
+function updateScores(t) {
+  if (t === 0) {
+    document.getElementById('red-score').textContent  = '0.0';
+    document.getElementById('blue-score').textContent = '—';
+    const c = document.getElementById('chart-cursor');
+    if (c) { c.setAttribute('x1',3); c.setAttribute('x2',3); }
+    return;
+  }
+  const h = DATA.history[t-1];
+  document.getElementById('red-score').textContent  = h.red_score.toFixed(1);
+  document.getElementById('blue-score').textContent = h.blue_score.toFixed(1);
+
+  const W = 272, n = DATA.history.length;
+  const x = ((t-1)/Math.max(n-1,1))*(W-6)+3;
+  const c = document.getElementById('chart-cursor');
+  if (c) { c.setAttribute('x1',x); c.setAttribute('x2',x); }
+}
+
+// ════════════════════════════════════════════════════════
+// NARRATIVE METERS
+// ════════════════════════════════════════════════════════
+function buildNarrativeMeters() {
+  narMeters.innerHTML = '';
+  Object.entries(DATA.narratives).forEach(([id, nar]) => {
+    const div = document.createElement('div');
+    div.className = 'belief-meter';
+    div.innerHTML = `
+      <div class="belief-label">
+        <span>${nar.label}</span>
+        <span id="nar-pct-${id}">0%</span>
+      </div>
+      <div class="belief-track">
+        <div class="belief-fill ${id}" id="nar-fill-${id}" style="width:0%"></div>
+      </div>`;
+    narMeters.appendChild(div);
+  });
+}
+
+function updateNarrativeMeters(t) {
+  const snap = getSnap(t);
+  Object.keys(DATA.narratives).forEach(nid => {
+    // Average belief for this narrative across all nodes
+    const vals = Object.values(snap).map(s => (s.beliefs||{})[nid]||0);
+    const avg  = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
+    const pct  = Math.round(avg * 100);
+    const fill = document.getElementById(`nar-fill-${nid}`);
+    const pctEl= document.getElementById(`nar-pct-${nid}`);
+    if (fill)  fill.style.width = Math.min(100, avg * 100 / 0.6) + '%';
+    if (pctEl) pctEl.textContent = pct + '%';
+  });
+}
+
+function updatePolarization(t) {
+  const h = t > 0 ? DATA.history[t-1] : null;
+  const pol = h ? h.polarization : 0;
+  document.getElementById('pol-fill').style.width = (pol * 100) + '%';
+  document.getElementById('pol-val').textContent = pol.toFixed(3);
+}
+
+// ════════════════════════════════════════════════════════
+// TURN PIPS
+// ════════════════════════════════════════════════════════
+function buildTurnPips() {
+  const cont = document.getElementById('turn-pips');
+  DATA.history.forEach(h => {
+    const pct = (h.turn / DATA.total_turns) * 100;
+    const pip = document.createElement('div');
+    pip.className = 'turn-pip ' +
+      (h.alerts.length ? 'alert' :
+       h.red_score > h.blue_score ? 'red-win' : 'blue-win');
+    pip.style.left     = pct + '%';
+    pip.style.position = 'absolute';
+    pip.style.top      = '50%';
+    pip.style.transform= 'translate(-50%,-50%)';
+    pip.style.width    = '2px';
+    pip.style.height   = '10px';
+    cont.appendChild(pip);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// LOG
+// ════════════════════════════════════════════════════════
+const ACTION_ICONS = {
+  inject_narrative:'💉', amplify:'📢', spoof_source:'🎭',
+  wedge:'⚔', elite_capture:'👑', flood:'🌊', astroturf:'🌱',
+  prebunk:'🛡', debunk:'❌', boost_resilience:'💪',
+  authenticate:'🔍', monitor_edge:'👁', platform_action:'🔇',
+  alliance_signal:'🤝', strategic_comms:'📡', pass:'—',
+};
+
+function buildLog() {
+  logEl.innerHTML = '';
+  DATA.history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.dataset.turn = h.turn;
+
+    let html = `<div class="log-turn">TURN ${String(h.turn).padStart(2,'0')}</div>`;
+
+    h.red_actions.slice(0,2).forEach((a,i) => {
+      const o = h.red_outcomes[i] || {};
+      const icon = ACTION_ICONS[a.type] || '?';
+      const sc   = o.status==='success'?'ok':o.status==='detected'?'det':'fail';
+      const tgt  = a.target_node ? ` → ${a.target_node.replace(/_/g,' ')}` : '';
+      html += `<div class="log-action"><span class="red-a">${icon} ${a.type.replace(/_/g,' ')}</span>${tgt} <span class="${sc}">${o.status||''}</span></div>`;
+    });
+    if (h.red_actions.length > 2) {
+      html += `<div class="log-action" style="color:var(--gray);font-size:8px">+ ${h.red_actions.length-2} more red actions</div>`;
+    }
+
+    h.blue_actions.slice(0,2).forEach((a,i) => {
+      const o = h.blue_outcomes[i] || {};
+      const icon = ACTION_ICONS[a.type] || '?';
+      const sc   = o.status==='success'?'ok':o.status==='detected'?'det':'fail';
+      const tgt  = a.target_node ? ` → ${a.target_node.replace(/_/g,' ')}` : '';
+      html += `<div class="log-action"><span class="blue-a">${icon} ${a.type.replace(/_/g,' ')}</span>${tgt} <span class="${sc}">${o.status||''}</span></div>`;
+    });
+
+    h.alerts.forEach(a => {
+      html += `<div class="log-alert">⚠ ${a}</div>`;
+    });
+
+    div.innerHTML = html;
+    div.onclick = () => { stop(); setTurn(h.turn); };
+    logEl.appendChild(div);
+  });
+}
+
+function highlightLog(t) {
+  document.querySelectorAll('.log-entry').forEach(e => {
+    e.classList.toggle('active', parseInt(e.dataset.turn) === t);
+    if (parseInt(e.dataset.turn) === t)
+      e.scrollIntoView({block:'nearest', behavior:'smooth'});
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// TOOLTIP
+// ════════════════════════════════════════════════════════
+function showTT(e, node, sn) {
+  const beliefs = Object.entries(sn.beliefs||{})
+    .filter(([,v])=>v>0.02)
+    .map(([k,v])=>`<div class="tt-row"><span class="tt-k">${k.replace(/_/g,' ')}</span><span class="tt-v red">${(v*100).toFixed(0)}%</span></div>`)
+    .join('') || '<div class="tt-row"><span class="tt-k">belief</span><span class="tt-v">neutral</span></div>';
+
+  tooltip.innerHTML = `
+    <div class="tt-title">${node.label}</div>
+    <div class="tt-row"><span class="tt-k">type</span><span class="tt-v">${node.type}</span></div>
+    <div class="tt-row"><span class="tt-k">reach</span><span class="tt-v">${node.reach.toFixed(2)}</span></div>
+    <div class="tt-row"><span class="tt-k">resilience</span><span class="tt-v blue">${(sn.resilience||0).toFixed(2)}</span></div>
+    <div class="tt-row"><span class="tt-k">polarization</span><span class="tt-v">${(sn.polarization||0).toFixed(2)}</span></div>
+    <div class="tt-row"><span class="tt-k">captured</span><span class="tt-v ${sn.captured?'red':''}">${sn.captured?'YES':'no'}</span></div>
+    ${beliefs}`;
+  tooltip.classList.add('show');
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  const area = document.getElementById('canvas-area');
+  const rect = area.getBoundingClientRect();
+  let x = e.clientX - rect.left + 14;
+  let y = e.clientY - rect.top  - 10;
+  if (x + 230 > svgW) x = e.clientX - rect.left - 234;
+  if (y + 200 > svgH) y = e.clientY - rect.top  - 200;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
+function hideTT() { tooltip.classList.remove('show'); }
+
+// ════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════
+function el(tag, attrs={}) {
+  const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+// ════════════════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+  init();
+  setTurn(0);
+});
+</script>
+</body>
+</html>

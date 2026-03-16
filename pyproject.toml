@@ -1,0 +1,64 @@
+[build-system]
+requires      = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name        = "infosphere"
+version     = "0.1.0"
+description = "A multi-agent influence operations wargame and research platform"
+readme      = "README.md"
+license     = { text = "MIT" }
+requires-python = ">=3.8"
+
+authors = [
+  { name = "Cold Alchemy Games / Clarkson University" },
+]
+
+keywords = [
+  "wargame", "influence-operations", "multi-agent", "simulation",
+  "information-warfare", "reinforcement-learning", "game-ai",
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Games/Entertainment :: Simulation",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+
+# Core simulation has zero runtime dependencies.
+# Optional extras handle web UI and RL training.
+dependencies = []
+
+[project.optional-dependencies]
+web = ["flask>=2.3"]
+rl  = ["numpy>=1.24"]
+all = ["flask>=2.3", "numpy>=1.24"]
+
+[project.scripts]
+infosphere       = "main:main"
+infosphere-serve = "server:main"
+
+[project.urls]
+Homepage   = "https://github.com/yourusername/infosphere"
+Issues     = "https://github.com/yourusername/infosphere/issues"
+
+[tool.setuptools.packages.find]
+include = ["infosphere*"]
+
+[tool.setuptools.package-data]
+"infosphere.static" = ["*.html", "*.css", "*.js"]
+
+[tool.pytest.ini_options]
+testpaths    = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>INFOSPHERE // LIVE OPERATION</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Courier+Prime:wght@400;700&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap');
+
+:root {
+  --ink:       #0d0d0b;
+  --paper:     #f4efe6;
+  --paper2:    #ece6d8;
+  --paper3:    #e0d9c8;
+  --red:       #c41e1e;
+  --red-dark:  #8b1010;
+  --red-bg:    #fdf0f0;
+  --blue:      #1a3a6b;
+  --blue-mid:  #2756a8;
+  --blue-bg:   #f0f4fd;
+  --gold:      #b8860b;
+  --gold-bg:   #fdf8ec;
+  --green:     #1a6b35;
+  --gray:      #6b6055;
+  --border:    #c5bcac;
+  --mono:      'Courier Prime', monospace;
+  --display:   'Archivo Black', sans-serif;
+  --cond:      'Barlow Condensed', sans-serif;
+  --shadow:    0 2px 12px rgba(0,0,0,0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  height: 100vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  grid-template-columns: 1fr 340px;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; mix-blend-mode: multiply;
+}
+
+/* ── Header ── */
+header {
+  grid-column: 1 / -1;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 16px;
+  border-bottom: 3px solid var(--red);
+  position: relative;
+}
+header::after {
+  content: '';
+  position: absolute; bottom: -3px; left: 0;
+  width: 30%; height: 3px;
+  background: var(--blue-mid);
+}
+
+.logo {
+  font-family: var(--display);
+  font-size: 18px;
+  letter-spacing: 5px;
+  color: var(--paper);
+  flex-shrink: 0;
+}
+.logo em { color: var(--red); font-style: normal; }
+
+.h-sep { width: 1px; height: 32px; background: #333; flex-shrink: 0; }
+
+.scenario-tag {
+  font-family: var(--cond);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #aaa;
+  text-transform: uppercase;
+}
+
+.h-fill { flex: 1; }
+
+.turn-counter {
+  font-family: var(--cond);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--paper);
+  letter-spacing: 2px;
+}
+.turn-counter span { color: var(--gold); }
+
+.status-pill {
+  font-family: var(--cond);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding: 4px 12px;
+  text-transform: uppercase;
+  border: 1.5px solid;
+}
+.status-pill.your-turn  { border-color: var(--gold); color: var(--gold); animation: blink-border 1.2s ease-in-out infinite; }
+.status-pill.ai-turn    { border-color: #555; color: #888; }
+.status-pill.finished   { border-color: var(--green); color: var(--green); }
+.status-pill.both-turn  { border-color: var(--blue-mid); color: var(--blue-mid); }
+@keyframes blink-border {
+  0%,100% { opacity: 1; } 50% { opacity: 0.5; }
+}
+
+.team-badge {
+  font-family: var(--cond);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  padding: 4px 12px;
+  text-transform: uppercase;
+}
+.team-badge.red  { background: var(--red);  color: var(--paper); }
+.team-badge.blue { background: var(--blue); color: var(--paper); }
+.team-badge.both { background: #333; color: var(--paper); }
+
+/* ── Canvas ── */
+.canvas-area {
+  position: relative;
+  overflow: hidden;
+  background: var(--paper2);
+  cursor: default;
+}
+.canvas-area.selectable { cursor: crosshair; }
+
+/* Registration corners */
+.corner { position: absolute; width: 16px; height: 16px; z-index: 5; }
+.corner::before, .corner::after { content:''; position:absolute; background:var(--border); }
+.c-tl { top:8px; left:8px; } .c-tl::before{top:7px;left:0;width:16px;height:1px;} .c-tl::after{top:0;left:7px;width:1px;height:16px;}
+.c-tr { top:8px; right:8px;} .c-tr::before{top:7px;left:0;width:16px;height:1px;} .c-tr::after{top:0;left:7px;width:1px;height:16px;}
+.c-bl { bottom:8px;left:8px;} .c-bl::before{top:7px;left:0;width:16px;height:1px;} .c-bl::after{top:0;left:7px;width:1px;height:16px;}
+.c-br { bottom:8px;right:8px;} .c-br::before{top:7px;left:0;width:16px;height:1px;} .c-br::after{top:0;left:7px;width:1px;height:16px;}
+
+#game-svg { width:100%; height:100%; display:block; }
+
+/* Node tooltip */
+.tooltip {
+  position: absolute;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 11px;
+  font-family: var(--mono);
+  line-height: 1.7;
+  padding: 10px 13px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+  max-width: 210px;
+  border-left: 3px solid var(--red);
+  z-index: 100;
+}
+.tooltip.show { opacity: 1; }
+.tt-title { font-family:var(--cond); font-size:13px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:5px; padding-bottom:4px; border-bottom:1px solid #333; }
+.tt-row { display:flex; justify-content:space-between; gap:10px; font-size:10px; }
+.tt-k { color: #888; }
+.tt-v { color: var(--gold); }
+.tt-v.red { color: #ff7070; }
+.tt-v.blue { color: #7eb8f7; }
+
+/* ── Right panel ── */
+.side-panel {
+  background: var(--paper);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-section {
+  padding: 11px 13px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.panel-section.grow { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+.section-title {
+  font-family: var(--cond);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: var(--gray);
+  text-transform: uppercase;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Score strip */
+.score-strip { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.score-card { background: var(--paper2); border: 1px solid var(--border); padding: 7px 9px; }
+.score-lbl { font-family:var(--cond); font-size:8px; letter-spacing:2px; text-transform:uppercase; margin-bottom:2px; }
+.score-lbl.red  { color: var(--red); }
+.score-lbl.blue { color: var(--blue-mid); }
+.score-num { font-family:var(--display); font-size:20px; line-height:1; }
+.score-num.red  { color: var(--red); }
+.score-num.blue { color: var(--blue-mid); }
+
+/* Resource bar */
+.res-row { margin-top: 7px; }
+.res-label { font-family:var(--cond); font-size:9px; letter-spacing:1px; color:var(--gray); display:flex; justify-content:space-between; margin-bottom:3px; }
+.res-track { height:6px; background:var(--paper3); border:1px solid var(--border); position:relative; overflow:hidden; }
+.res-fill { position:absolute; left:0; top:0; height:100%; transition:width 0.3s; }
+.res-fill.red  { background: var(--red); }
+.res-fill.blue { background: var(--blue-mid); }
+
+/* Belief meters */
+.belief-row { margin-bottom:5px; }
+.bel-label { font-family:var(--cond); font-size:9px; letter-spacing:0.5px; color:var(--gray); display:flex; justify-content:space-between; margin-bottom:2px; }
+.bel-track { height:5px; background:var(--paper3); border:1px solid var(--border); position:relative; overflow:hidden; }
+.bel-fill.red-nar  { background: var(--red); }
+.bel-fill.gold-nar { background: var(--gold); }
+.bel-fill { position:absolute; left:0; top:0; height:100%; transition:width 0.4s; }
+
+/* Action builder */
+.action-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.action-item { display: flex; align-items: center; gap: 7px; }
+.action-item button {
+  flex: 1;
+  background: var(--paper2);
+  border: 1px solid var(--border);
+  color: var(--ink);
+  font-family: var(--cond);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 8px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s;
+  position: relative;
+}
+.action-item button:hover { border-color: var(--ink); background: var(--paper3); }
+.action-item button.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.action-item button.red-action.selected  { background: var(--red-dark); border-color: var(--red); }
+.action-item button.blue-action.selected { background: var(--blue); border-color: var(--blue-mid); }
+.action-cost {
+  font-family: var(--cond);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gray);
+  width: 20px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.action-cost.cant-afford { color: #ccc; }
+
+/* Selected action indicator */
+.selection-status {
+  font-family: var(--cond);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--gray);
+  padding: 5px 8px;
+  background: var(--paper2);
+  border: 1px solid var(--border);
+  margin-bottom: 6px;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+}
+.selection-status.active { border-color: var(--gold); color: var(--gold); }
+
+/* Queued actions */
+.queued-list { margin-bottom: 7px; }
+.queued-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 7px;
+  background: var(--paper2);
+  border: 1px solid var(--border);
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+.queued-item .remove-btn {
+  background: none;
+  border: none;
+  color: var(--gray);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+}
+.queued-item .remove-btn:hover { color: var(--red); }
+
+/* Budget display */
+.budget-display {
+  font-family: var(--cond);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--gray);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.budget-display .spent { color: var(--red); }
+.budget-display .remaining { color: var(--green); }
+
+/* Submit / End turn button */
+.end-turn-btn {
+  width: 100%;
+  padding: 9px;
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.end-turn-btn:hover { background: var(--red-dark); }
+.end-turn-btn:disabled { background: #999; cursor: not-allowed; }
+.end-turn-btn.red-btn  { background: var(--red-dark); }
+.end-turn-btn.blue-btn { background: var(--blue); }
+
+/* Narrative selector */
+.nar-selector {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.nar-btn {
+  font-family: var(--cond);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  background: var(--paper2);
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.nar-btn.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* Turn log */
+.turn-log {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+  padding-bottom: 4px;
+}
+.log-entry {
+  padding: 6px 11px;
+  border-bottom: 1px solid var(--paper3);
+  font-size: 9px;
+  line-height: 1.6;
+}
+.log-turn-label { font-family:var(--cond); font-size:8px; letter-spacing:2px; color:var(--gray); margin-bottom:2px; }
+.log-red  { color: var(--red); }
+.log-blue { color: var(--blue-mid); }
+.log-alert { color: var(--gold); font-size:8px; }
+.log-ok   { color: var(--green); }
+.log-fail { color: var(--gray); }
+
+/* Narrative requires node selection indicator */
+.needs-node {
+  font-family: var(--cond);
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--gold);
+  text-align: center;
+  padding: 4px;
+  border: 1px dashed var(--gold);
+  margin-bottom: 5px;
+  display: none;
+}
+.needs-node.show { display: block; }
+
+/* Win overlay */
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(13,13,11,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  display: none;
+}
+.win-overlay.show { display: flex; }
+.win-card {
+  background: var(--paper);
+  border: 3px solid var(--red);
+  padding: 36px 48px;
+  text-align: center;
+  max-width: 400px;
+}
+.win-headline {
+  font-family: var(--display);
+  font-size: 32px;
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+.win-headline.red  { color: var(--red); }
+.win-headline.blue { color: var(--blue-mid); }
+.win-sub { font-family: var(--cond); font-size: 13px; letter-spacing: 2px; color: var(--gray); margin-bottom: 24px; }
+.win-btn {
+  font-family: var(--display);
+  font-size: 11px;
+  letter-spacing: 3px;
+  padding: 10px 28px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo"><em>INFO</em>SPHERE</div>
+  <div class="h-sep"></div>
+  <div class="scenario-tag" id="scenario-tag">—</div>
+  <div class="h-fill"></div>
+  <div class="turn-counter">TURN <span id="turn-num">0</span> / <span id="deadline-num">20</span></div>
+  <div class="h-sep"></div>
+  <div class="status-pill ai-turn" id="status-pill">LOADING</div>
+  <div class="h-sep"></div>
+  <div class="team-badge red" id="team-badge">RED</div>
+</header>
+
+<!-- Canvas -->
+<div class="canvas-area" id="canvas-area">
+  <div class="corner c-tl"></div><div class="corner c-tr"></div>
+  <div class="corner c-bl"></div><div class="corner c-br"></div>
+  <svg id="game-svg"></svg>
+  <div class="tooltip" id="tooltip"></div>
+</div>
+
+<!-- Side panel -->
+<div class="side-panel">
+
+  <!-- Scores + resources -->
+  <div class="panel-section">
+    <div class="section-title">Scores</div>
+    <div class="score-strip">
+      <div class="score-card">
+        <div class="score-lbl red">Red Op</div>
+        <div class="score-num red" id="red-score">0.0</div>
+      </div>
+      <div class="score-card">
+        <div class="score-lbl blue">Blue Def</div>
+        <div class="score-num blue" id="blue-score">0.0</div>
+      </div>
+    </div>
+    <div class="res-row">
+      <div class="res-label"><span>RED RESOURCES</span><span id="red-res-num">10</span></div>
+      <div class="res-track"><div class="res-fill red" id="red-res-bar" style="width:50%"></div></div>
+    </div>
+    <div class="res-row">
+      <div class="res-label"><span>BLUE RESOURCES</span><span id="blue-res-num">5</span></div>
+      <div class="res-track"><div class="res-fill blue" id="blue-res-bar" style="width:25%"></div></div>
+    </div>
+  </div>
+
+  <!-- Narrative meters -->
+  <div class="panel-section">
+    <div class="section-title">Narrative Spread</div>
+    <div id="nar-meters"></div>
+  </div>
+
+  <!-- Action builder -->
+  <div class="panel-section" id="action-panel">
+    <div class="section-title">Your Actions</div>
+
+    <!-- Narrative selector (for actions that need a narrative) -->
+    <div class="nar-selector" id="nar-selector"></div>
+
+    <!-- Action buttons -->
+    <div class="action-list" id="action-list"></div>
+
+    <!-- Node selection prompt -->
+    <div class="needs-node" id="needs-node">↑ CLICK A NODE ON THE MAP</div>
+
+    <!-- Selection status -->
+    <div class="selection-status" id="selection-status">Select an action above</div>
+
+    <!-- Budget + queue -->
+    <div class="budget-display">
+      <span>QUEUED: <span id="queued-count">0</span> actions</span>
+      <span>REMAINING: <span id="budget-remaining" class="remaining">10</span> pts</span>
+    </div>
+    <div class="queued-list" id="queued-list"></div>
+
+    <!-- End turn -->
+    <button class="end-turn-btn" id="end-turn-btn" onclick="endTurn()">
+      END TURN
+    </button>
+  </div>
+
+  <!-- Turn log -->
+  <div class="panel-section grow">
+    <div class="section-title">Intercept Log</div>
+    <div class="turn-log" id="turn-log"></div>
+  </div>
+
+</div>
+
+<!-- Win overlay -->
+<div class="win-overlay" id="win-overlay">
+  <div class="win-card">
+    <div class="win-headline" id="win-headline">—</div>
+    <div class="win-sub" id="win-sub">—</div>
+    <button class="win-btn" onclick="newGame()">NEW GAME</button>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// CONFIG + STATE
+// ══════════════════════════════════════════════════════════
+let CFG      = {};        // server config
+let STATE    = {};        // latest game state
+let SELECTED_ACTION = null;  // action type string
+let SELECTED_NARRATIVE = null;
+let QUEUED_ACTIONS = [];  // [{type, target_node, narrative_id, ...}]
+let AWAITING_NODE = false;
+let MY_TEAM  = "red";     // which side am I
+let POLL_INTERVAL = null;
+
+const POSITIONS = {
+  // Election
+  foreign_amp:    {x:0.14, y:0.09}, social_alpha:   {x:0.35, y:0.20},
+  social_beta:    {x:0.65, y:0.20}, legacy_tv:      {x:0.20, y:0.40},
+  online_news:    {x:0.50, y:0.36}, election_auth:  {x:0.80, y:0.40},
+  partisan_right: {x:0.22, y:0.63}, swing_rural:    {x:0.40, y:0.74},
+  swing_suburban: {x:0.60, y:0.74}, partisan_left:  {x:0.78, y:0.63},
+  youth_vote:     {x:0.50, y:0.88},
+  // Alliance
+  adversary_rt:   {x:0.12,y:0.10}, opposition_a:  {x:0.22,y:0.36},
+  opposition_b:   {x:0.40,y:0.26}, state_media_1: {x:0.60,y:0.26},
+  state_media_2:  {x:0.78,y:0.36}, intl_press:    {x:0.50,y:0.10},
+  alliance_hq:    {x:0.50,y:0.56}, state_anchor:  {x:0.30,y:0.74},
+  state_waverer:  {x:0.50,y:0.84}, state_small:   {x:0.70,y:0.74},
+  // Health
+  foreign_disinfo:{x:0.12,y:0.10}, alt_media:     {x:0.28,y:0.26},
+  skeptic_network:{x:0.18,y:0.52}, social_health: {x:0.50,y:0.18},
+  mainstream_media:{x:0.72,y:0.26}, health_auth:  {x:0.82,y:0.52},
+  med_community:  {x:0.75,y:0.72}, local_leaders: {x:0.60,y:0.86},
+  urban_pop:      {x:0.45,y:0.62}, rural_pop:     {x:0.28,y:0.80},
+  elderly:        {x:0.50,y:0.90},
+};
+
+const TYPE_COLOR = {
+  demographic:'#1a3a6b', media:'#6b3a1a', elite:'#1a6b35',
+  institution:'#6b1a6b', platform:'#1a5a6b', foreign:'#6b6b1a',
+};
+
+const RED_ACTIONS = [
+  {type:'inject_narrative', label:'💉 Inject Narrative',   cost:2, needs_node:true,  needs_nar:true},
+  {type:'amplify',          label:'📢 Amplify',            cost:1, needs_node:true,  needs_nar:true},
+  {type:'elite_capture',    label:'👑 Elite Capture',      cost:4, needs_node:true,  needs_nar:false},
+  {type:'wedge',            label:'⚔ Wedge',               cost:2, needs_node:true,  needs_nar:true},
+  {type:'spoof_source',     label:'🎭 Spoof Source',       cost:3, needs_node:true,  needs_nar:true},
+  {type:'astroturf',        label:'🌱 Astroturf',          cost:3, needs_node:true,  needs_nar:true},
+  {type:'flood',            label:'🌊 Flood',              cost:2, needs_node:true,  needs_nar:false},
+  {type:'pass',             label:'— Pass',                cost:0, needs_node:false, needs_nar:false},
+];
+
+const BLUE_ACTIONS = [
+  {type:'prebunk',          label:'🛡 Prebunk',            cost:2, needs_node:true,  needs_nar:true},
+  {type:'debunk',           label:'❌ Debunk',             cost:2, needs_node:true,  needs_nar:true},
+  {type:'boost_resilience', label:'💪 Boost Resilience',   cost:2, needs_node:true,  needs_nar:false},
+  {type:'strategic_comms',  label:'📡 Strategic Comms',    cost:4, needs_node:true,  needs_nar:true},
+  {type:'platform_action',  label:'🔇 Platform Action',    cost:3, needs_node:true,  needs_nar:false},
+  {type:'alliance_signal',  label:'🤝 Alliance Signal',    cost:2, needs_node:true,  needs_nar:false},
+  {type:'authenticate',     label:'🔍 Authenticate',       cost:2, needs_node:true,  needs_nar:false},
+  {type:'monitor_edge',     label:'👁 Monitor Node',       cost:1, needs_node:true,  needs_nar:false},
+  {type:'pass',             label:'— Pass',                cost:0, needs_node:false, needs_nar:false},
+];
+
+// ══════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════
+async function init() {
+  CFG = await fetch('/api/config').then(r=>r.json());
+  MY_TEAM = CFG.human_team === 'both' ? 'red' : CFG.human_team;
+
+  document.getElementById('scenario-tag').textContent = CFG.scenario.toUpperCase();
+  document.getElementById('team-badge').textContent =
+    CFG.human_team === 'both' ? 'RED + BLUE' : CFG.human_team.toUpperCase();
+  document.getElementById('team-badge').className = 'team-badge ' +
+    (CFG.human_team === 'both' ? 'both' : CFG.human_team);
+
+  buildActionPanel();
+  buildNarSelector();
+  window.addEventListener('resize', () => { if (STATE.nodes) drawWorld(); });
+  startPolling();
+}
+
+function startPolling() {
+  POLL_INTERVAL = setInterval(pollState, 800);
+}
+
+async function pollState() {
+  try {
+    const s = await fetch('/api/state').then(r=>r.json());
+    const changed = s.turn !== STATE.turn || s.status !== STATE.status;
+    STATE = s;
+    updateUI();
+    if (s.status === 'finished') {
+      clearInterval(POLL_INTERVAL);
+      showWin(s.winner);
+    }
+  } catch(e) { /* server not ready yet */ }
+}
+
+// ══════════════════════════════════════════════════════════
+// UI UPDATE
+// ══════════════════════════════════════════════════════════
+function updateUI() {
+  if (!STATE.nodes) return;
+
+  document.getElementById('turn-num').textContent    = STATE.turn;
+  document.getElementById('deadline-num').textContent = STATE.deadline;
+  document.getElementById('red-score').textContent   = (STATE.red_score||0).toFixed(1);
+  document.getElementById('blue-score').textContent  = (STATE.blue_score||0).toFixed(1);
+
+  const maxRes = 20;
+  document.getElementById('red-res-num').textContent  = STATE.red_resources || 0;
+  document.getElementById('blue-res-num').textContent = STATE.blue_resources || 0;
+  document.getElementById('red-res-bar').style.width  = Math.min(100,(STATE.red_resources||0)/maxRes*100)+'%';
+  document.getElementById('blue-res-bar').style.width = Math.min(100,(STATE.blue_resources||0)/maxRes*100)+'%';
+
+  updateNarMeters();
+  updateStatusPill();
+  updateActionPanel();
+  drawWorld();
+
+  if (STATE.last_record) appendLog(STATE.last_record);
+}
+
+function updateStatusPill() {
+  const pill  = document.getElementById('status-pill');
+  const ht    = CFG.human_team;
+  const status= STATE.status;
+
+  if (status === 'animating') {
+    pill.textContent = 'AI ACTING…'; pill.className = 'status-pill ai-turn'; return;
+  }
+  if (status === 'finished') {
+    pill.textContent = 'FINISHED'; pill.className = 'status-pill finished'; return;
+  }
+  if (ht === 'both') {
+    pill.textContent = 'YOUR TURN'; pill.className = 'status-pill both-turn'; return;
+  }
+  const isMyTurn = (ht === 'red' && status === 'red_turn') ||
+                   (ht === 'blue' && status === 'blue_turn');
+  if (isMyTurn) {
+    pill.textContent = 'YOUR TURN'; pill.className = 'status-pill your-turn';
+  } else {
+    pill.textContent = 'AI ACTING…'; pill.className = 'status-pill ai-turn';
+  }
+}
+
+function isMyTurn() {
+  const ht = CFG.human_team;
+  const st = STATE.status;
+  if (st === 'finished' || st === 'animating') return false;
+  if (ht === 'both') return true;
+  if (ht === 'red'  && st === 'red_turn')  return true;
+  if (ht === 'blue' && st === 'blue_turn') return true;
+  return false;
+}
+
+// ══════════════════════════════════════════════════════════
+// NARRATIVE METERS
+// ══════════════════════════════════════════════════════════
+function updateNarMeters() {
+  const cont = document.getElementById('nar-meters');
+  if (!STATE.narratives || !STATE.nodes) return;
+  cont.innerHTML = '';
+  Object.entries(STATE.narratives).forEach(([nid, nar], i) => {
+    const vals = STATE.nodes.map(n => (n.beliefs[nid]||0));
+    const avg  = vals.reduce((a,b)=>a+b,0)/Math.max(vals.length,1);
+    const pct  = Math.round(avg*100);
+    const cls  = i===0 ? 'red-nar' : 'gold-nar';
+    cont.innerHTML += `
+      <div class="belief-row">
+        <div class="bel-label"><span>${nar.label}</span><span>${pct}% avg</span></div>
+        <div class="bel-track"><div class="bel-fill ${cls}" style="width:${Math.min(100,avg/0.6*100)}%"></div></div>
+      </div>`;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+// ACTION PANEL
+// ══════════════════════════════════════════════════════════
+function buildNarSelector() {
+  // Built dynamically once CFG is loaded
+}
+
+function buildActionPanel() {
+  const actions = (CFG.human_team === 'blue') ? BLUE_ACTIONS : RED_ACTIONS;
+  const list = document.getElementById('action-list');
+  list.innerHTML = '';
+  actions.forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'action-item';
+    row.innerHTML = `
+      <button id="abtn-${a.type}" class="${CFG.human_team==='blue'?'blue':'red'}-action"
+              onclick="selectAction('${a.type}')">${a.label}</button>
+      <span class="action-cost" id="acost-${a.type}">${a.cost}</span>`;
+    list.appendChild(row);
+  });
+}
+
+function updateActionPanel() {
+  if (!isMyTurn()) {
+    document.getElementById('end-turn-btn').disabled = true;
+    return;
+  }
+  document.getElementById('end-turn-btn').disabled = false;
+
+  const teamKey = CFG.human_team === 'blue' ? 'blue' : 'red';
+  const budget  = STATE[`${teamKey}_resources`] || 0;
+  const spent   = QUEUED_ACTIONS.reduce((s,a) => {
+    const def = [...RED_ACTIONS, ...BLUE_ACTIONS].find(x=>x.type===a.type);
+    return s + (def ? def.cost : 0);
+  }, 0);
+  const remaining = budget - spent;
+
+  document.getElementById('queued-count').textContent    = QUEUED_ACTIONS.length;
+  document.getElementById('budget-remaining').textContent = remaining;
+
+  // Rebuild nar selector from current state
+  if (STATE.narratives) {
+    const sel = document.getElementById('nar-selector');
+    if (!sel.children.length) {
+      Object.entries(STATE.narratives).forEach(([nid, nar]) => {
+        const btn = document.createElement('button');
+        btn.className = 'nar-btn' + (SELECTED_NARRATIVE===nid?' selected':'');
+        btn.textContent = nar.label.substring(0,20);
+        btn.id = `nbtn-${nid}`;
+        btn.onclick = () => selectNarrative(nid);
+        sel.appendChild(btn);
+      });
+      // Auto-select primary
+      if (!SELECTED_NARRATIVE && STATE.primary_narrative) {
+        selectNarrative(STATE.primary_narrative);
+      }
+    }
+  }
+
+  // Update action affordability
+  const actions = CFG.human_team === 'blue' ? BLUE_ACTIONS : RED_ACTIONS;
+  actions.forEach(a => {
+    const costEl = document.getElementById(`acost-${a.type}`);
+    const btnEl  = document.getElementById(`abtn-${a.type}`);
+    if (!costEl || !btnEl) return;
+    const canAfford = a.cost <= remaining;
+    costEl.className = 'action-cost' + (canAfford ? '' : ' cant-afford');
+    btnEl.disabled   = !canAfford && a.type !== 'pass';
+  });
+
+  // Rebuild queued list
+  const ql = document.getElementById('queued-list');
+  ql.innerHTML = '';
+  QUEUED_ACTIONS.forEach((a, i) => {
+    const item = document.createElement('div');
+    item.className = 'queued-item';
+    item.innerHTML = `
+      <span>${a.type.replace(/_/g,' ')} ${a.target_node ? '→ '+a.target_node : ''}${a.narrative_id ? '/'+a.narrative_id.substring(0,8) : ''}</span>
+      <button class="remove-btn" onclick="removeQueued(${i})">✕</button>`;
+    ql.appendChild(item);
+  });
+}
+
+function selectNarrative(nid) {
+  SELECTED_NARRATIVE = nid;
+  document.querySelectorAll('.nar-btn').forEach(b => b.classList.remove('selected'));
+  const nb = document.getElementById(`nbtn-${nid}`);
+  if (nb) nb.classList.add('selected');
+}
+
+function selectAction(type) {
+  const actions = CFG.human_team === 'blue' ? BLUE_ACTIONS : RED_ACTIONS;
+  const def = actions.find(a => a.type === type);
+  if (!def) return;
+
+  SELECTED_ACTION = def;
+  AWAITING_NODE   = def.needs_node;
+
+  document.querySelectorAll('.action-list button').forEach(b => b.classList.remove('selected'));
+  const btn = document.getElementById(`abtn-${type}`);
+  if (btn) btn.classList.add('selected');
+
+  const ss = document.getElementById('selection-status');
+  const nn = document.getElementById('needs-node');
+
+  if (type === 'pass') {
+    AWAITING_NODE = false;
+    queueAction({type:'pass'});
+    SELECTED_ACTION = null;
+    ss.textContent = 'Pass queued';
+    ss.className = 'selection-status';
+    nn.classList.remove('show');
+    return;
+  }
+
+  if (def.needs_node) {
+    ss.textContent = `${def.label} — click target node on map`;
+    ss.className   = 'selection-status active';
+    nn.classList.add('show');
+    document.getElementById('canvas-area').classList.add('selectable');
+  } else {
+    // Action doesn't need a node, queue immediately
+    queueAction({type, narrative_id: def.needs_nar ? SELECTED_NARRATIVE : null});
+    ss.textContent = `${def.label} queued`;
+    ss.className   = 'selection-status';
+    nn.classList.remove('show');
+    SELECTED_ACTION = null;
+    AWAITING_NODE   = false;
+  }
+
+  updateActionPanel();
+}
+
+function onNodeClick(nodeId) {
+  if (!AWAITING_NODE || !SELECTED_ACTION || !isMyTurn()) return;
+
+  const a = {
+    type:         SELECTED_ACTION.type,
+    target_node:  nodeId,
+    narrative_id: SELECTED_ACTION.needs_nar ? SELECTED_NARRATIVE : null,
+  };
+  queueAction(a);
+
+  const ss = document.getElementById('selection-status');
+  ss.textContent = `${SELECTED_ACTION.label} → ${nodeId} queued`;
+  ss.className = 'selection-status';
+  document.getElementById('needs-node').classList.remove('show');
+  document.getElementById('canvas-area').classList.remove('selectable');
+  SELECTED_ACTION = null;
+  AWAITING_NODE   = false;
+  document.querySelectorAll('.action-list button').forEach(b => b.classList.remove('selected'));
+  updateActionPanel();
+}
+
+function queueAction(a) {
+  QUEUED_ACTIONS.push(a);
+  updateActionPanel();
+}
+
+function removeQueued(i) {
+  QUEUED_ACTIONS.splice(i, 1);
+  updateActionPanel();
+}
+
+async function endTurn() {
+  if (!isMyTurn()) return;
+  const team = (CFG.human_team === 'both') ? MY_TEAM : CFG.human_team;
+
+  await fetch('/api/action', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({team, actions: QUEUED_ACTIONS, end_turn: true}),
+  });
+
+  QUEUED_ACTIONS = [];
+  SELECTED_ACTION = null;
+  AWAITING_NODE   = false;
+
+  // In both-human mode, swap teams
+  if (CFG.human_team === 'both' && MY_TEAM === 'red') {
+    MY_TEAM = 'blue';
+    buildActionPanel();
+    document.getElementById('team-badge').textContent = 'BLUE';
+    document.getElementById('team-badge').className   = 'team-badge blue';
+  } else if (CFG.human_team === 'both' && MY_TEAM === 'blue') {
+    MY_TEAM = 'red';
+    buildActionPanel();
+    document.getElementById('team-badge').textContent = 'RED';
+    document.getElementById('team-badge').className   = 'team-badge red';
+  }
+
+  updateActionPanel();
+}
+
+async function newGame() {
+  await fetch('/api/new_game', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({}),
+  });
+  document.getElementById('win-overlay').classList.remove('show');
+  QUEUED_ACTIONS = [];
+  SELECTED_ACTION = null;
+  document.getElementById('nar-selector').innerHTML = '';
+  SELECTED_NARRATIVE = null;
+  startPolling();
+}
+
+// ══════════════════════════════════════════════════════════
+// WIN OVERLAY
+// ══════════════════════════════════════════════════════════
+function showWin(winner) {
+  const overlay = document.getElementById('win-overlay');
+  const hl = document.getElementById('win-headline');
+  const sub = document.getElementById('win-sub');
+  hl.textContent = winner.toUpperCase() + ' WINS';
+  hl.className   = 'win-headline ' + winner;
+  sub.textContent = winner === 'red'
+    ? 'Narrative capture achieved. The information environment is compromised.'
+    : 'Epistemic stability maintained. The deadline has passed.';
+  overlay.classList.add('show');
+}
+
+// ══════════════════════════════════════════════════════════
+// TURN LOG
+// ══════════════════════════════════════════════════════════
+let LAST_LOGGED_TURN = 0;
+function appendLog(rec) {
+  if (rec.turn <= LAST_LOGGED_TURN) return;
+  LAST_LOGGED_TURN = rec.turn;
+  const log = document.getElementById('turn-log');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+
+  const icons = {inject_narrative:'💉',amplify:'📢',elite_capture:'👑',wedge:'⚔',
+    spoof_source:'🎭',astroturf:'🌱',flood:'🌊',prebunk:'🛡',debunk:'❌',
+    boost_resilience:'💪',strategic_comms:'📡',platform_action:'🔇',
+    alliance_signal:'🤝',authenticate:'🔍',monitor_edge:'👁',pass:'—'};
+
+  let html = `<div class="log-turn-label">TURN ${String(rec.turn).padStart(2,'0')}</div>`;
+  (rec.red_actions||[]).slice(0,2).forEach((a,i)=>{
+    const o = (rec.red_outcomes||[])[i]||{};
+    const sc = o.status==='success'?'log-ok':'log-fail';
+    html += `<div class="log-red">${icons[a.type]||'?'} ${a.type.replace(/_/g,' ')}${a.target_node?' → '+a.target_node:''} <span class="${sc}">${o.status||''}</span></div>`;
+  });
+  (rec.blue_actions||[]).slice(0,2).forEach((a,i)=>{
+    const o = (rec.blue_outcomes||[])[i]||{};
+    const sc = o.status==='success'?'log-ok':'log-fail';
+    html += `<div class="log-blue">${icons[a.type]||'?'} ${a.type.replace(/_/g,' ')}${a.target_node?' → '+a.target_node:''} <span class="${sc}">${o.status||''}</span></div>`;
+  });
+  (rec.alerts||[]).forEach(a => { html += `<div class="log-alert">⚠ ${a}</div>`; });
+  entry.innerHTML = html;
+  log.prepend(entry);
+}
+
+// ══════════════════════════════════════════════════════════
+// WORLD DRAWING
+// ══════════════════════════════════════════════════════════
+const svg = document.getElementById('game-svg');
+let svgW = 0, svgH = 0;
+
+function drawWorld() {
+  const area = document.getElementById('canvas-area');
+  svgW = area.clientWidth; svgH = area.clientHeight;
+  svg.setAttribute('width',svgW); svg.setAttribute('height',svgH);
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  if (!STATE.nodes) return;
+
+  // Grid
+  const defs = e('defs');
+  const pat  = e('pattern',{id:'g',width:'40',height:'40',patternUnits:'userSpaceOnUse'});
+  pat.appendChild(e('path',{d:'M 40 0 L 0 0 0 40',fill:'none',stroke:'#ccc8bc','stroke-width':'0.5'}));
+  defs.appendChild(pat); svg.appendChild(defs);
+  svg.appendChild(e('rect',{width:svgW,height:svgH,fill:'url(#g)',opacity:'0.5'}));
+
+  // Build node map
+  const nodeMap = {};
+  STATE.nodes.forEach(n => { nodeMap[n.id] = n; });
+
+  // Edges
+  (STATE.edges||[]).forEach(edge => {
+    if (edge.blocked) return;
+    const sp = nodePos(edge.source); const tp = nodePos(edge.target);
+    const tg = Math.round(80 + edge.trust * 140);
+    const sw = 0.5 + edge.bandwidth * 2.5;
+    const mx = (sp.x+tp.x)/2 + (tp.y-sp.y)*0.08;
+    const my = (sp.y+tp.y)/2 - (tp.x-sp.x)*0.08;
+    const path = e('path',{
+      d:`M ${sp.x} ${sp.y} Q ${mx} ${my} ${tp.x} ${tp.y}`,
+      stroke:`rgb(${tg},${Math.round(tg*0.9)},${Math.round(tg*0.8)})`,
+      'stroke-width':sw, fill:'none', opacity:'0.6'
+    });
+    svg.appendChild(path);
+    // Arrow
+    const dx=tp.x-mx,dy=tp.y-my,len=Math.sqrt(dx*dx+dy*dy)||1;
+    const nx=dx/len,ny=dy/len,R=18,px=4;
+    const ax=tp.x-nx*R,ay=tp.y-ny*R;
+    svg.appendChild(e('polygon',{
+      points:`${ax},${ay} ${ax-nx*8+ny*px},${ay-ny*8-nx*px} ${ax-nx*8-ny*px},${ay-ny*8+nx*px}`,
+      fill:`rgb(${tg},${Math.round(tg*0.9)},${Math.round(tg*0.8)})`,opacity:'0.6'
+    }));
+  });
+
+  // Nodes
+  STATE.nodes.forEach(node => {
+    const p = nodePos(node.id);
+    const r = 13 + node.size*3 + node.reach*8;
+    const dom = dominantBelief(node);
+    const fill = dom.val > 0.06 ? beliefFill(dom.val, dom.id) : '#f0ebe0';
+    const typeC = TYPE_COLOR[node.type] || '#333';
+    const isMine = isMyTurn();
+
+    // Captured halo
+    if (node.captured) {
+      svg.appendChild(e('circle',{cx:p.x,cy:p.y,r:r+6,fill:'none',
+        stroke:'#c41e1e','stroke-width':2,'stroke-dasharray':'4 3',opacity:'0.8'}));
+    }
+
+    // Belief arc
+    if (dom.val > 0.05) {
+      const pct=Math.min(1,dom.val),angle=pct*2*Math.PI;
+      const x2=p.x+r*Math.sin(angle),y2=p.y-r*Math.cos(angle);
+      const lg=pct>0.5?1:0;
+      const arcD = pct>=0.995
+        ? `M ${p.x} ${p.y-r} A ${r} ${r} 0 1 1 ${p.x-0.01} ${p.y-r} Z`
+        : `M ${p.x} ${p.y-r} A ${r} ${r} 0 ${lg} 1 ${x2} ${y2} L ${p.x} ${p.y} Z`;
+      const arcC = dom.id === STATE.primary_narrative ? '#c41e1e' : '#b8860b';
+      svg.appendChild(e('path',{d:arcD,fill:arcC,opacity:'0.18'}));
+    }
+
+    // Node circle (highlight if selectable)
+    const isClickTarget = AWAITING_NODE && isMine;
+    svg.appendChild(e('circle',{
+      cx:p.x,cy:p.y,r,fill,
+      stroke: isClickTarget ? '#b8860b' : (node.captured ? '#c41e1e' : typeC),
+      'stroke-width': isClickTarget ? 2.5 : 1.5,
+    }));
+
+    // Type dot
+    svg.appendChild(e('circle',{cx:p.x,cy:p.y-r+5,r:3,fill:typeC,opacity:'0.8'}));
+
+    // Belief %
+    if (dom.val > 0.08) {
+      const txt = e('text',{x:p.x,y:p.y+4,fill:dom.val>0.5?'#fff':'#0d0d0b',
+        'font-family':'Barlow Condensed, sans-serif','font-size':'11',
+        'font-weight':'700','text-anchor':'middle'});
+      txt.textContent = Math.round(dom.val*100)+'%';
+      svg.appendChild(txt);
+    }
+
+    // Queued action highlight
+    const isQueued = QUEUED_ACTIONS.some(qa => qa.target_node === node.id);
+    if (isQueued) {
+      svg.appendChild(e('circle',{cx:p.x,cy:p.y,r:r+3,fill:'none',
+        stroke:'#b8860b','stroke-width':2,opacity:'0.9'}));
+    }
+
+    // Label
+    const lbl = e('text',{x:p.x,y:p.y+r+12,
+      'font-family':'Barlow Condensed, sans-serif','font-size':'8',
+      'font-weight':'700','letter-spacing':'1','text-anchor':'middle',fill:'#4a3a2a'});
+    lbl.textContent = node.id.replace(/_/g,' ').toUpperCase();
+    svg.appendChild(lbl);
+
+    // Clickable hitbox
+    const hit = e('circle',{cx:p.x,cy:p.y,r:r+6,fill:'transparent',cursor:isClickTarget?'pointer':'default'});
+    hit.addEventListener('click', () => onNodeClick(node.id));
+    hit.addEventListener('mouseenter', ev => showTT(ev, node));
+    hit.addEventListener('mousemove',  moveTooltip);
+    hit.addEventListener('mouseleave', hideTT);
+    svg.appendChild(hit);
+  });
+}
+
+function nodePos(id) {
+  const p = POSITIONS[id];
+  if (!p) return {x:svgW/2, y:svgH/2};
+  return {x:p.x*svgW, y:p.y*svgH};
+}
+
+function dominantBelief(node) {
+  let best=null,bestV=0;
+  for(const[k,v] of Object.entries(node.beliefs||{})) if(v>bestV){best=k;bestV=v;}
+  return {id:best,val:bestV};
+}
+
+function beliefFill(val, narId) {
+  if (narId === STATE.primary_narrative) {
+    const r=Math.round(196+(255-196)*val),g=Math.round(30*(1-val)),b=Math.round(30*(1-val));
+    return `rgb(${r},${g},${b})`;
+  }
+  return `rgb(${Math.round(184*val+240*(1-val))},${Math.round(134*val+220*(1-val))},${Math.round(11*val+180*(1-val))})`;
+}
+
+// ══════════════════════════════════════════════════════════
+// TOOLTIP
+// ══════════════════════════════════════════════════════════
+const tooltip = document.getElementById('tooltip');
+function showTT(ev, node) {
+  const dom = dominantBelief(node);
+  const beliefs = Object.entries(node.beliefs||{})
+    .filter(([,v])=>v>0.02)
+    .map(([k,v])=>`<div class="tt-row"><span class="tt-k">${k.replace(/_/g,' ')}</span><span class="tt-v red">${(v*100).toFixed(0)}%</span></div>`)
+    .join('') || '<div class="tt-row"><span class="tt-k">neutral</span><span class="tt-v">—</span></div>';
+  tooltip.innerHTML = `
+    <div class="tt-title">${node.label}</div>
+    <div class="tt-row"><span class="tt-k">type</span><span class="tt-v">${node.type}</span></div>
+    <div class="tt-row"><span class="tt-k">reach</span><span class="tt-v">${node.reach}</span></div>
+    <div class="tt-row"><span class="tt-k">resilience</span><span class="tt-v blue">${(node.resilience||0).toFixed(2)}</span></div>
+    <div class="tt-row"><span class="tt-k">polarization</span><span class="tt-v">${(node.polarization||0).toFixed(2)}</span></div>
+    <div class="tt-row"><span class="tt-k">captured</span><span class="tt-v ${node.captured?'red':''}">${node.captured?'YES':'no'}</span></div>
+    ${beliefs}`;
+  tooltip.classList.add('show');
+  moveTooltip(ev);
+}
+function moveTooltip(ev) {
+  const area = document.getElementById('canvas-area');
+  const rect = area.getBoundingClientRect();
+  let x=ev.clientX-rect.left+14, y=ev.clientY-rect.top-10;
+  if (x+220>svgW) x=ev.clientX-rect.left-224;
+  if (y+180>svgH) y=ev.clientY-rect.top-180;
+  tooltip.style.left=x+'px'; tooltip.style.top=y+'px';
+}
+function hideTT() { tooltip.classList.remove('show'); }
+
+// ══════════════════════════════════════════════════════════
+// SVG HELPER
+// ══════════════════════════════════════════════════════════
+function e(tag, attrs={}) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+  for (const [k,v] of Object.entries(attrs)) el.setAttribute(k,v);
+  return el;
+}
+
+// ══════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

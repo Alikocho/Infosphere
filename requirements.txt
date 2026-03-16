@@ -1,0 +1,14 @@
+# requirements.txt — minimal install for core simulation
+# No dependencies required. Python 3.8+ standard library only.
+# For optional features, use the extras below.
+
+# Web UI (human play)
+# pip install -r requirements-web.txt
+#   flask>=2.3
+
+# RL training
+# pip install -r requirements-rl.txt
+#   numpy>=1.24
+
+# Development / testing
+# pip install -r requirements-dev.txt
