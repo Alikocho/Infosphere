@@ -21,7 +21,7 @@ Red has two paths to victory: capture a majority of nodes above a belief thresho
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Belief propagation | Bounded confidence (Detroit model) | Produces echo chambers emergently; maps to empirical network science |
+| Belief propagation | Bounded confidence (Deffuant–Weisbuch model) | Produces echo chambers emergently; maps to empirical network science |
 | Narrative competition | Zero-sum within node | Belief share is finite — gains for one narrative come at cost to others |
 | Semantic properties | Plausibility, virality, stickiness, divisiveness | Captures the mechanistic difference between narratives (a sticky narrative resists debunking; a divisive one powers wedge attacks) |
 | Resource asymmetry | Red 10/turn, Blue 5/turn | Reflects empirical offense-defense asymmetry in IO; creates genuine strategic tension |
