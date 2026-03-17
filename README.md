@@ -21,7 +21,7 @@ Red has two paths to victory: capture a majority of nodes above a belief thresho
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Belief propagation | Bounded confidence (Deffuant–Weisbuch model) | Produces echo chambers emergently; maps to empirical network science |
+| Belief propagation | Bounded confidence (Detroit model) | Produces echo chambers emergently; maps to empirical network science |
 | Narrative competition | Zero-sum within node | Belief share is finite — gains for one narrative come at cost to others |
 | Semantic properties | Plausibility, virality, stickiness, divisiveness | Captures the mechanistic difference between narratives (a sticky narrative resists debunking; a divisive one powers wedge attacks) |
 | Resource asymmetry | Red 10/turn, Blue 5/turn | Reflects empirical offense-defense asymmetry in IO; creates genuine strategic tension |
@@ -53,9 +53,9 @@ cd infosphere
 # Core simulation — no dependencies needed
 python3 main.py
 
-# Human play via web UI
+# Human play via web UI — just run the server, configure in browser
 pip3 install flask
-python3 server.py --human red
+python3 server.py
 
 # RL training
 pip3 install numpy
@@ -87,28 +87,26 @@ python3 main.py --list-scenarios
 
 ### Human Play (Web UI)
 
-Start the game server and open your browser:
+Start the server — no flags needed. Everything is configured in the browser:
 
 ```bash
 pip3 install flask
+python3 server.py
+# Open http://localhost:5000
+```
 
-# Play Red against heuristic Blue AI
+The start screen lets you pick a scenario and assign each team (Human, Heuristic AI, or Random AI) independently. To skip the start screen and jump straight into a specific configuration, CLI flags still work:
+
+```bash
+# Skip start screen: straight into election, you play Red
 python3 server.py --human red --scenario election
 
-# Play Blue against heuristic Red AI
-python3 server.py --human blue --scenario health
-
-# Human vs Human (two players, same URL)
-python3 server.py --human both --scenario alliance
+# Choose a different port
+python3 server.py --port 5001
 
 # Play against Claude LLM (requires ANTHROPIC_API_KEY)
 python3 server.py --human red --opponent claude --scenario election
-
-# Choose a different port
-python3 server.py --human red --port 5001
 ```
-
-Then open `http://localhost:5000` in your browser. Select an action from the right panel, click a target node on the map, and hit **End Turn**. The AI opponent resolves immediately and the world updates.
 
 ### Generating a Battle Replay
 
@@ -218,47 +216,59 @@ Claude-backed agent using native tool calling, with a system prompt establishing
 
 ## Human Play
 
-Infosphere includes a browser-based game interface powered by a Flask server. The human player interacts through a live population graph — clicking nodes to target actions, building a queue of moves, and submitting them each turn. The AI opponent resolves simultaneously.
+Infosphere includes a browser-based game interface powered by a Flask server. When you open the game, a start screen lets you configure everything before play begins — no command-line flags required.
 
 ### Starting a Game
 
 ```bash
 pip3 install flask
-python3 server.py --human red --scenario election
-# Open http://localhost:5000
+python3 server.py
 ```
+
+Then open `http://localhost:5000`. The start screen appears automatically.
+
+### Start Screen
+
+The start screen has two sections. The top section shows three scenario cards — click one to select it. Each card shows the scenario name, deadline, difficulty rating, and a one-line description of the strategic situation.
+
+The bottom section assigns each team independently. Red and Blue each have three options:
+
+| Option | Description |
+|---|---|
+| **Human** | You control this side |
+| **Heuristic AI** | Doctrine-driven rule-based agent |
+| **Random AI** | Random legal actions — useful as a baseline opponent |
+
+A status line below the team panel confirms your configuration and warns you if you select Human vs Human (hot-seat mode) or AI vs AI (watch mode). Click **Begin Operation** to start.
+
+### Play Modes
+
+**Human vs AI** — you control one side, the AI resolves its turn immediately after you submit yours. The game moves at your pace.
+
+**Human vs Human** — both sides are human. After Red submits their turn the action panel switches to Blue's action set. Works best passing a single device, or with two browser windows open to the same URL.
+
+**AI vs AI (watch mode)** — both sides are AI agents. The game plays itself automatically at roughly one turn per second while you watch the population graph update in real time. Good for observing heuristic agent strategies before playing yourself.
 
 ### Gameplay Loop
 
-Each turn proceeds as follows. First, select a narrative from the selector at the top of the action panel — this is the narrative your action will target. Second, click an action button. Actions marked with a map cursor require a node target; the map will switch to selection mode and node outlines will glow gold. Click a node on the map to complete the selection. The action is added to your queue with a cost deducted from your remaining budget. Repeat until satisfied or resources are exhausted. Finally, click **End Turn** to submit. The engine resolves your actions, runs the AI opponent's turn, propagates beliefs, and returns the updated world state.
+Each turn: select a narrative from the selector at the top of the action panel, click an action button, then click a target node on the map (the cursor changes and nodes glow gold when a target is needed). The action is queued with its resource cost deducted. Repeat until your budget is exhausted or you're done, then click **End Turn**. The engine resolves your actions, runs the AI turn if applicable, propagates beliefs across the graph, and returns the updated world state.
 
-The map encodes state visually: node fill color shifts from cream to red as belief in the primary narrative grows, with the percentage printed inside. Captured nodes show a dashed red halo. Edge thickness represents bandwidth; edge lightness represents trust. Queued targets are outlined in gold so you can preview your moves before committing.
+The map encodes state visually: node fill color shifts from cream to red as belief in the primary narrative grows, with the percentage printed inside nodes above 8%. Captured nodes show a dashed red halo. Edge thickness represents bandwidth; edge lightness represents trust. Your queued targets are outlined in gold so you can preview moves before committing.
 
-### Modes
-
-**Human vs AI** (`--human red` or `--human blue`) pits you against a heuristic or Claude LLM opponent. The AI resolves its turn immediately after you submit, so the game moves at your pace.
-
-**Human vs Human** (`--human both`) runs both sides in the same browser session. After Red submits, the panel switches to Blue's action set. Pass the device or use two separate browser windows pointed at the same URL for a true two-player game.
-
-**Opponent options** are set with `--opponent`:
-
-| Option | Requires | Behaviour |
-|---|---|---|
-| `heuristic` | Nothing | Doctrine-driven AI; fast and predictable |
-| `random` | Nothing | Random legal actions; useful baseline |
-| `claude` | `ANTHROPIC_API_KEY` | LLM reasoning with IO doctrine system prompt |
+When the game ends, the win overlay shows the result and a **New Game** button that returns you to the start screen.
 
 ### Server CLI Reference
 
 ```
 python3 server.py [options]
 
-  --scenario {election,alliance,health}   Scenario (default: election)
-  --human {red,blue,both}                 Which side the human plays (default: red)
-  --opponent {heuristic,random,claude}    AI opponent type (default: heuristic)
-  --seed INT                              RNG seed (default: random)
-  --port INT                              Port to serve on (default: 5000)
-  --host STR                              Host to bind (default: 127.0.0.1)
+  --port INT    Port to serve on (default: 5000)
+  --host STR    Host to bind (default: 127.0.0.1)
+
+  # Optional: skip the start screen and go straight into a game
+  --scenario {election,alliance,health}
+  --human {red,blue,both}
+  --opponent {heuristic,random,claude}
 ```
 
 ---
@@ -457,7 +467,7 @@ Infosphere is part of a broader research programme on adversarial AI simulation.
 ## Roadmap
 
 - [x] Battle replay HTML generator (narrative heatmap visualization)
-- [x] Human play via browser-based web UI (Red, Blue, or both sides)
+- [x] Human play via browser-based web UI — start screen with scenario/team selection, Human vs AI, Human vs Human, and AI vs AI watch mode
 - [x] Standalone Mac (.app) and Windows (.exe) builds via GitHub Actions
 - [ ] PPO reinforcement learning agent (carries over from CyberWar)
 - [ ] Claude LLM agent with tool-calling interface
