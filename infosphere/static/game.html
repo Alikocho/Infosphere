@@ -426,9 +426,306 @@ header::after {
   cursor: pointer;
   text-transform: uppercase;
 }
+/* ── Start screen ─────────────────────────────────────────────────────────── */
+.start-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  overflow-y: auto;
+}
+.start-overlay.hidden { display: none; }
+
+.start-card {
+  width: 100%;
+  max-width: 760px;
+}
+
+.start-masthead {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.start-masthead h1 {
+  font-family: var(--display);
+  font-size: 48px;
+  letter-spacing: 10px;
+  color: var(--paper);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.start-masthead h1 em { color: var(--red); font-style: normal; }
+.start-masthead p {
+  font-family: var(--cond);
+  font-size: 12px;
+  letter-spacing: 4px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.start-section-label {
+  font-family: var(--cond);
+  font-size: 9px;
+  letter-spacing: 4px;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.start-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #2a2a2a;
+}
+
+/* Scenario cards */
+.scenario-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.scenario-card {
+  background: #0d1a0d;
+  border: 1px solid #1e1e1e;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.scenario-card:hover { border-color: #444; }
+.scenario-card.selected {
+  border-color: var(--red);
+  background: #1a0808;
+}
+.scenario-card.selected::before {
+  content: '✓';
+  position: absolute;
+  top: 8px; right: 10px;
+  color: var(--red);
+  font-size: 12px;
+}
+.sc-title {
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--paper);
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+.sc-meta {
+  font-family: var(--cond);
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: #555;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 10px;
+}
+.sc-diff { color: var(--gold); }
+.sc-desc {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: #888;
+  line-height: 1.5;
+}
+
+/* Team assignment grid */
+.team-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.team-card {
+  border: 1px solid #1e1e1e;
+  padding: 14px;
+}
+.team-card.red-card { background: #120808; }
+.team-card.blue-card { background: #080812; }
+
+.team-card-title {
+  font-family: var(--display);
+  font-size: 13px;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.red-card .team-card-title  { color: var(--red); }
+.blue-card .team-card-title { color: #4a8aff; }
+
+.team-options {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.team-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 1px solid #222;
+  cursor: pointer;
+  transition: all 0.12s;
+  background: transparent;
+  color: var(--paper);
+  font-family: var(--cond);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: left;
+  text-transform: uppercase;
+  width: 100%;
+}
+.team-option:hover { border-color: #444; }
+.team-option.selected { border-color: #666; background: #1a1a1a; }
+.red-card  .team-option.selected { border-color: var(--red);   background: #1a0808; }
+.blue-card .team-option.selected { border-color: #4a8aff; background: #08081a; }
+
+.team-option-icon { font-size: 14px; flex-shrink: 0; }
+.team-option-label { flex: 1; }
+.team-option-sub {
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  color: #555;
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* Launch button */
+.launch-btn {
+  width: 100%;
+  padding: 14px;
+  font-family: var(--display);
+  font-size: 14px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  background: var(--red-dark);
+  color: var(--paper);
+  border: 1px solid var(--red);
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.launch-btn:hover {
+  background: var(--red);
+  letter-spacing: 8px;
+}
+.launch-btn:disabled {
+  background: #1a1a1a;
+  border-color: #333;
+  color: #444;
+  cursor: not-allowed;
+  letter-spacing: 6px;
+}
+
+/* Conflict warning (when both sides are human or both AI etc) */
+.config-status {
+  font-family: var(--cond);
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #555;
+  text-align: center;
+  margin-bottom: 12px;
+  min-height: 18px;
+}
+.config-status.warn { color: var(--gold); }
+.config-status.ok   { color: var(--green); }
 </style>
 </head>
 <body>
+
+<!-- Start screen overlay -->
+<div class="start-overlay" id="start-overlay">
+  <div class="start-card">
+
+    <div class="start-masthead">
+      <h1><em>INFO</em>SPHERE</h1>
+      <p>Influence Operations Wargame</p>
+    </div>
+
+    <!-- Scenario selection -->
+    <div class="start-section-label">Select Scenario</div>
+    <div class="scenario-cards" id="scenario-cards">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Team assignment -->
+    <div class="start-section-label">Assign Teams</div>
+    <div class="team-grid">
+
+      <div class="team-card red-card">
+        <div class="team-card-title">🔴 Red Team — Attacker</div>
+        <div class="team-options" id="red-options">
+          <button class="team-option selected" data-team="red" data-value="human"
+                  onclick="selectTeamOption('red','human',this)">
+            <span class="team-option-icon">👤</span>
+            <span class="team-option-label">Human
+              <div class="team-option-sub">You control Red</div>
+            </span>
+          </button>
+          <button class="team-option" data-team="red" data-value="heuristic"
+                  onclick="selectTeamOption('red','heuristic',this)">
+            <span class="team-option-icon">🤖</span>
+            <span class="team-option-label">Heuristic AI
+              <div class="team-option-sub">Rule-based doctrine agent</div>
+            </span>
+          </button>
+          <button class="team-option" data-team="red" data-value="random"
+                  onclick="selectTeamOption('red','random',this)">
+            <span class="team-option-icon">🎲</span>
+            <span class="team-option-label">Random AI
+              <div class="team-option-sub">Baseline / training opponent</div>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <div class="team-card blue-card">
+        <div class="team-card-title">🔵 Blue Team — Defender</div>
+        <div class="team-options" id="blue-options">
+          <button class="team-option" data-team="blue" data-value="human"
+                  onclick="selectTeamOption('blue','human',this)">
+            <span class="team-option-icon">👤</span>
+            <span class="team-option-label">Human
+              <div class="team-option-sub">You control Blue</div>
+            </span>
+          </button>
+          <button class="team-option selected" data-team="blue" data-value="heuristic"
+                  onclick="selectTeamOption('blue','heuristic',this)">
+            <span class="team-option-icon">🤖</span>
+            <span class="team-option-label">Heuristic AI
+              <div class="team-option-sub">Rule-based doctrine agent</div>
+            </span>
+          </button>
+          <button class="team-option" data-team="blue" data-value="random"
+                  onclick="selectTeamOption('blue','random',this)">
+            <span class="team-option-icon">🎲</span>
+            <span class="team-option-label">Random AI
+              <div class="team-option-sub">Baseline / training opponent</div>
+            </span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="config-status ok" id="config-status">Human Red vs Heuristic Blue</div>
+    <button class="launch-btn" id="launch-btn" onclick="launchGame()">
+      ▶ &nbsp; BEGIN OPERATION
+    </button>
+
+  </div>
+</div>
 
 <!-- Header -->
 <header>
@@ -594,17 +891,162 @@ const BLUE_ACTIONS = [
 ];
 
 // ══════════════════════════════════════════════════════════
+// START SCREEN
+// ══════════════════════════════════════════════════════════
+let START_SCENARIO  = 'election';
+let START_RED       = 'human';
+let START_BLUE      = 'heuristic';
+let SCENARIOS_META  = {};
+
+async function initStartScreen() {
+  // Load scenario metadata from server
+  try {
+    SCENARIOS_META = await fetch('/api/scenarios').then(r => r.json());
+  } catch(e) {
+    // Fallback if endpoint not available
+    SCENARIOS_META = {
+      election: { label:'Democratic Election', description:'Spread election fraud disinformation before election day.', deadline:20, difficulty:'Medium' },
+      alliance: { label:'Alliance Cohesion',   description:'Fracture a military coalition before a crisis summit.',  deadline:15, difficulty:'Hard'   },
+      health:   { label:'Public Health Emergency', description:'Spread vaccine hesitancy during a vaccination campaign.', deadline:20, difficulty:'Easy' },
+    };
+  }
+
+  // Build scenario cards
+  const container = document.getElementById('scenario-cards');
+  container.innerHTML = '';
+  Object.entries(SCENARIOS_META).forEach(([key, s], i) => {
+    const card = document.createElement('div');
+    card.className = 'scenario-card' + (i === 0 ? ' selected' : '');
+    card.dataset.scenario = key;
+    card.onclick = () => selectScenario(key, card);
+    card.innerHTML = `
+      <div class="sc-title">${s.label}</div>
+      <div class="sc-meta">
+        <span>⏱ ${s.deadline} turns</span>
+        <span class="sc-diff">${s.difficulty}</span>
+      </div>
+      <div class="sc-desc">${s.description}</div>`;
+    container.appendChild(card);
+  });
+
+  updateConfigStatus();
+}
+
+function selectScenario(key, cardEl) {
+  START_SCENARIO = key;
+  document.querySelectorAll('.scenario-card').forEach(c => c.classList.remove('selected'));
+  cardEl.classList.add('selected');
+  updateConfigStatus();
+}
+
+function selectTeamOption(team, value, btnEl) {
+  if (team === 'red') START_RED  = value;
+  else                START_BLUE = value;
+  // Deselect siblings
+  document.querySelectorAll(`[data-team="${team}"]`).forEach(b => b.classList.remove('selected'));
+  btnEl.classList.add('selected');
+  updateConfigStatus();
+}
+
+function updateConfigStatus() {
+  const el  = document.getElementById('config-status');
+  const btn = document.getElementById('launch-btn');
+
+  const redLabel  = { human:'Human', heuristic:'Heuristic AI', random:'Random AI' }[START_RED]  || START_RED;
+  const blueLabel = { human:'Human', heuristic:'Heuristic AI', random:'Random AI' }[START_BLUE] || START_BLUE;
+
+  if (START_RED === 'human' && START_BLUE === 'human') {
+    el.textContent = '⚠ Human vs Human — take turns at the same screen';
+    el.className   = 'config-status warn';
+  } else if (START_RED !== 'human' && START_BLUE !== 'human') {
+    el.textContent = `AI vs AI — ${redLabel} Red vs ${blueLabel} Blue (watch mode)`;
+    el.className   = 'config-status warn';
+  } else {
+    el.textContent = `${redLabel} Red vs ${blueLabel} Blue`;
+    el.className   = 'config-status ok';
+  }
+
+  btn.disabled = false;
+}
+
+async function launchGame() {
+  const btn = document.getElementById('launch-btn');
+  btn.disabled = true;
+  btn.textContent = 'INITIALISING…';
+
+  // Map the UI selections to server params
+  // Server needs: human (which side is human), opponent (what AI to use for the AI side)
+  let humanTeam, redAgent, blueAgent;
+
+  if (START_RED === 'human' && START_BLUE === 'human') {
+    humanTeam = 'both';
+    redAgent  = 'human';
+    blueAgent = 'human';
+  } else if (START_RED === 'human') {
+    humanTeam = 'red';
+    blueAgent = START_BLUE;  // the AI opponent type
+    redAgent  = 'human';
+  } else if (START_BLUE === 'human') {
+    humanTeam = 'blue';
+    redAgent  = START_RED;   // the AI opponent type
+    blueAgent = 'human';
+  } else {
+    // AI vs AI — server still needs a human_team value
+    // We'll send 'none' and handle it; fall back to 'red' for compatibility
+    humanTeam = 'none';
+    redAgent  = START_RED;
+    blueAgent = START_BLUE;
+  }
+
+  // For server: opponent = whichever AI agent is playing (prefers red's type)
+  const opponent = START_RED !== 'human' ? START_RED :
+                   START_BLUE !== 'human' ? START_BLUE : 'heuristic';
+
+  await fetch('/api/new_game', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      scenario:   START_SCENARIO,
+      human:      humanTeam,
+      opponent:   opponent,
+      red_agent:  redAgent,
+      blue_agent: blueAgent,
+      seed:       Math.floor(Math.random() * 9999),
+    }),
+  });
+
+  // Hide start screen, show game
+  document.getElementById('start-overlay').classList.add('hidden');
+  await initGame();
+}
+
+// ══════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════
-async function init() {
+async function initGame() {
   CFG = await fetch('/api/config').then(r=>r.json());
-  MY_TEAM = CFG.human_team === 'both' ? 'red' : CFG.human_team;
 
-  document.getElementById('scenario-tag').textContent = CFG.scenario.toUpperCase();
-  document.getElementById('team-badge').textContent =
-    CFG.human_team === 'both' ? 'RED + BLUE' : CFG.human_team.toUpperCase();
-  document.getElementById('team-badge').className = 'team-badge ' +
-    (CFG.human_team === 'both' ? 'both' : CFG.human_team);
+  // For AI vs AI, MY_TEAM is just 'red' (spectator mode)
+  MY_TEAM = CFG.human_team === 'both' ? 'red' :
+            CFG.human_team === 'red'  ? 'red' :
+            CFG.human_team === 'blue' ? 'blue' : 'red';
+
+  document.getElementById('scenario-tag').textContent = CFG.scenario
+    ? CFG.scenario.charAt(0).toUpperCase() + CFG.scenario.slice(1) : '—';
+
+  const htLabel = CFG.human_team === 'both' ? 'RED + BLUE' : (CFG.human_team || 'red').toUpperCase();
+  document.getElementById('team-badge').textContent  = htLabel;
+  document.getElementById('team-badge').className   = 'team-badge ' +
+    (CFG.human_team === 'both' ? 'both' : (CFG.human_team || 'red'));
+
+  // Clear previous game state
+  QUEUED_ACTIONS    = [];
+  SELECTED_ACTION   = null;
+  SELECTED_NARRATIVE= null;
+  LAST_LOGGED_TURN  = 0;
+  document.getElementById('nar-selector').innerHTML = '';
+  document.getElementById('turn-log').innerHTML     = '';
+  document.getElementById('win-overlay').classList.remove('show');
 
   buildActionPanel();
   buildNarSelector();
@@ -902,17 +1344,15 @@ async function endTurn() {
 }
 
 async function newGame() {
-  await fetch('/api/new_game', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({}),
-  });
+  // Stop polling
+  clearInterval(POLL_INTERVAL);
+  POLL_INTERVAL = null;
+  STATE = {};
+  // Show start screen again
   document.getElementById('win-overlay').classList.remove('show');
-  QUEUED_ACTIONS = [];
-  SELECTED_ACTION = null;
-  document.getElementById('nar-selector').innerHTML = '';
-  SELECTED_NARRATIVE = null;
-  startPolling();
+  document.getElementById('start-overlay').classList.remove('hidden');
+  // Re-init start screen (resets cards etc.)
+  await initStartScreen();
 }
 
 // ══════════════════════════════════════════════════════════
@@ -1145,7 +1585,7 @@ function e(tag, attrs={}) {
 // ══════════════════════════════════════════════════════════
 // BOOT
 // ══════════════════════════════════════════════════════════
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', initStartScreen);
 </script>
 </body>
 </html>
