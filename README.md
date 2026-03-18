@@ -42,6 +42,18 @@ Both open the game automatically in your default browser. No install, no setup.
 
 ---
 
+## Documentation
+
+| Document | Format | For |
+|---|---|---|
+| **[Player Quick Reference](docs/infosphere_quickref.docx)** | 2-page Word doc (landscape) | Hand out before a session. Full action list, costs, win conditions, map key, and scenario summary on two pages. |
+| **[Player Rules](docs/infosphere_rules.docx)** | 7-page Word doc | New players who want to understand the game before sitting down. Covers all concepts, turn structure, interface guide, strategy notes, and glossary. |
+| **README** (this file) | Markdown | Developers and researchers. Covers the simulation engine, agent architecture, scenario design, experiments, and CLI reference. |
+
+The quick reference and rules documents are designed for classroom and PME use — no technical background assumed.
+
+---
+
 ## Installation (Python / Developer)
 
 Infosphere requires Python 3.8+. The core simulation has no external dependencies. Human play requires Flask; RL training requires NumPy.
